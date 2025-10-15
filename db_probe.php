@@ -2,28 +2,6 @@
 require __DIR__ . '/helpers.php';
 $c = cfg(); $err=null; $pdo=db_try_connect($c,$err); if(!$pdo){ die("DB error: ".htmlspecialchars($err)); }
 
-function mysql_old_password_hex(string $pwd): string {
-    $nr = 1345345333; $add = 7; $nr2 = 0x12345671;
-    $pwd = str_replace(["\r","\n"], '', $pwd);
-    $len = strlen($pwd);
-    for ($i=0; $i<$len; $i++) {
-        $c = $pwd[$i];
-        if ($c === ' ' || $c === "\t") continue;
-        $tmp = ord($c);
-        $nr ^= ((($nr & 63) + $add) * $tmp) + ($nr << 8);
-        $nr &= 0xFFFFFFFF;
-        $nr2 += ($nr2 << 8) ^ $nr;
-        $nr2 &= 0xFFFFFFFF;
-        $add += $tmp; $add &= 0xFFFFFFFF;
-    }
-    $res1 = $nr & 0x7FFFFFFF; $res2 = $nr2 & 0x7FFFFFFF;
-    return strtoupper(sprintf("%08x%08x", $res1, $res2));
-}
-function old_password_hex(string $pwd, PDO $pdo): string {
-    try { $h=$pdo->query("SELECT HEX(OLD_PASSWORD(".$pdo->quote($pwd)."))")->fetchColumn(); if($h) return strtoupper($h); } catch(Throwable $e){}
-    return mysql_old_password_hex($pwd);
-}
-
 if ($_SERVER['REQUEST_METHOD']==='POST'){
   $login=$_POST['login']??''; $pwd=$_POST['pwd']??'';
   $tab=$_POST['tab']??($c['auth']['user_table'] ?? 'balp_usr');
@@ -41,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST'){
   }
   if(!$found){ echo "Uživatel NENALEZEN.\n</pre><p><a href='db_probe.php'>Zpět</a></p>"; exit; }
 
-  $old = old_password_hex($pwd,$pdo);
+  $old = balp_old_password_hex($pwd,$pdo);
   $md5hex = md5($pwd);
   $raw = $found['p_raw']; // může být ASCII hex (16) nebo raw 8B
 

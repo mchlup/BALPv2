@@ -107,4 +107,54 @@ function auth_user() {
 }
 
 function sql_quote_ident($n) { return '`' . str_replace('`', '``', $n) . '`'; }
+
+function balp_old_password_hash_php(string $pwd): string {
+    $nr = 1345345333;
+    $add = 7;
+    $nr2 = 0x12345671;
+    $pwd = str_replace(["\r", "\n"], '', $pwd);
+    $len = strlen($pwd);
+    for ($i = 0; $i < $len; $i++) {
+        $c = $pwd[$i];
+        if ($c === ' ' || $c === "\t") continue;
+        $tmp = ord($c);
+        $nr ^= ((($nr & 63) + $add) * $tmp) + ($nr << 8);
+        $nr &= 0xFFFFFFFF;
+        $nr2 += ($nr2 << 8) ^ $nr;
+        $nr2 &= 0xFFFFFFFF;
+        $add += $tmp;
+        $add &= 0xFFFFFFFF;
+    }
+    $res1 = $nr & 0x7FFFFFFF;
+    $res2 = $nr2 & 0x7FFFFFFF;
+    return strtoupper(sprintf('%08x%08x', $res1, $res2));
+}
+
+function balp_old_password_hex(string $pwd, ?PDO $pdo = null): string {
+    if ($pdo) {
+        try {
+            $stmt = $pdo->query("SELECT OLD_PASSWORD(" . $pdo->quote($pwd) . ")");
+            if ($stmt) {
+                $hash = $stmt->fetchColumn();
+                if (is_string($hash)) {
+                    if (preg_match('/^[0-9a-fA-F]{16}$/', $hash)) {
+                        return strtoupper($hash);
+                    }
+                    if (strlen($hash) === 8) {
+                        return strtoupper(bin2hex($hash));
+                    }
+                }
+            }
+        } catch (Throwable $e) {
+            // ignore DB OLD_PASSWORD() availability issues
+        }
+    }
+    return balp_old_password_hash_php($pwd);
+}
+
+function balp_old_password_raw(string $pwd, ?PDO $pdo = null): string {
+    $hex = balp_old_password_hex($pwd, $pdo);
+    $raw = hex2bin($hex);
+    return $raw === false ? '' : $raw;
+}
 ?>
