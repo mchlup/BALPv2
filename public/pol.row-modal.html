@@ -1,0 +1,30 @@
+<!-- Modal for actions on a single Polotovar row (Edit / Clone / Delete) -->
+<div class="modal fade" id="polRowModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-box-seam"></i> Polotovar</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zavřít"></button>
+      </div>
+      <div class="modal-body">
+        <div id="polRowModalBody">
+          <div class="placeholder-glow">
+            <div class="placeholder col-12" style="height: 2rem;"></div>
+            <div class="placeholder col-8"></div>
+            <div class="placeholder col-6"></div>
+            <div class="placeholder col-4"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="me-auto small text-muted" id="polRowMeta"></div>
+        <div class="btn-group">
+          <button type="button" class="btn btn-outline-primary" id="polRowEdit"><i class="bi bi-pencil-square"></i> Upravit</button>
+          <button type="button" class="btn btn-outline-secondary" id="polRowClone"><i class="bi bi-files"></i> Klonovat</button>
+          <button type="button" class="btn btn-outline-danger" id="polRowDelete"><i class="bi bi-trash"></i> Smazat</button>
+        </div>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zavřít</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,74 @@
+body { min-height: 100vh; }
+/* UI unification (tabs, tables, modal actions), 2025-08-26 */
+.nav-tabs .nav-link { font-weight: 600; }
+.table thead th.sortable { cursor: pointer; user-select: none; }
+#polRowModal .modal-footer .btn-group .btn { min-width: 8.5rem; }
+
+/* VP modal: stick header/footer + solid background */
+#vpModal .modal-header,
+#vpModal .modal-footer {
+  position: sticky;
+  inset-block-start: 0; /* header */
+  inset-block-end: 0;   /* footer */
+  background-color: var(--bs-body-bg);
+  z-index: 1030;
+}
+#vpModal .modal-header { top: 0; border-bottom: 1px solid var(--bs-border-color); }
+#vpModal .modal-footer { bottom: 0; border-top: 1px solid var(--bs-border-color); }
+
+/* --- VP modal: aby "Zavøít" nebylo na prùhledném pozadí --- */
+#vpModal .modal-header,
+#vpModal .modal-footer {
+  position: sticky;
+  background-color: var(--bs-body-bg);
+  z-index: 1030;
+}
+#vpModal .modal-header { top: 0;    border-bottom: 1px solid var(--bs-border-color); }
+#vpModal .modal-footer { bottom: 0;  border-top:    1px solid var(--bs-border-color); }
+
+/* Skryj "Uživatelé" v modálu VP i kdyby DOM byl jiný */
+#vpModal .nav-tabs .nav-link[href="#vp-users"],
+#vpModal .nav-tabs [data-bs-target="#vp-users"],
+#vpModal #vp-users { display: none !important; }
+
+/* autocomplete/dropdown v modálu – vždy nad obsahem a skrolovatelný */
+#polEditorModal .ui-autocomplete,
+#polEditorModal .tt-menu,
+#polEditorModal .dropdown-menu,
+#polEditorModal .autocomplete-menu {
+  z-index: 2005;          /* vyšší než .modal (Bootstrap ~1055–1060) */
+  max-height: 280px;
+  overflow-y: auto;
+  width: 100% !important; /* zarovnej šíøku na vstup */
+}
+
+/* nenech to uøíznout tabulkou/øádkem */
+#polEditorModal .table-responsive,
+#polEditorModal .table {
+  overflow: visible;
+}
+
+/* kontejner kolem inputu, aby absolutnì pozicované menu mìlo referenci */
+#polEditorModal .autocomplete-wrap {
+  position: relative;
+}
+
+.autocomplete-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  max-height: 250px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 0 0 0.25rem 0.25rem;
+}
+.autocomplete-results .list-group-item {
+  cursor: pointer;
+}
+.autocomplete-results .list-group-item:hover {
+  background-color: #f8f9fa;
+}
+
