@@ -81,7 +81,7 @@ button{padding:.6rem 1rem;border:0;border-radius:.5rem;background:#0d6efd;color:
   <fieldset><legend>Databáze</legend>
     <label>Host</label><input name="db_host" value="<?=htmlspecialchars($_POST['db_host'] ?? '127.0.0.1')?>">
     <label>Port</label><input name="db_port" value="<?=htmlspecialchars($_POST['db_port'] ?? '3306')?>">
-    <label>Název DB</label><input name="db_name" value="<?=htmlspecialchars($_POST['db_name'] ?? 'bapl_new')?>">
+    <label>Název DB</label><input name="db_name" value="<?=htmlspecialchars($_POST['db_name'] ?? 'balp_new')?>">
     <label>Uživatel</label><input name="db_user" value="<?=htmlspecialchars($_POST['db_user'] ?? '')?>">
     <label>Heslo</label><input name="db_pass" type="password" value="<?=htmlspecialchars($_POST['db_pass'] ?? '')?>">
   </fieldset>

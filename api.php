@@ -6,33 +6,6 @@ $action = $_GET['action'] ?? '';
 
 function require_auth(){ if(!has_auth())return; if(!auth_user()) respond_json(['error'=>'Unauthorized'],401); }
 
-/** OLD_PASSWORD() → 16 hex znaků (ASCII). Když DB funkce není, použij PHP fallback. */
-function mysql_old_password_hex_php(string $pwd): string {
-    $nr = 1345345333; $add = 7; $nr2 = 0x12345671;
-    $pwd = str_replace(["\r","\n"], '', $pwd);
-    $len = strlen($pwd);
-    for ($i=0; $i<$len; $i++) {
-        $c = $pwd[$i];
-        if ($c === ' ' || $c === "\t") continue;
-        $tmp = ord($c);
-        $nr ^= ((($nr & 63) + $add) * $tmp) + ($nr << 8);
-        $nr &= 0xFFFFFFFF;
-        $nr2 += ($nr2 << 8) ^ $nr;
-        $nr2 &= 0xFFFFFFFF;
-        $add += $tmp; $add &= 0xFFFFFFFF;
-    }
-    $res1 = $nr & 0x7FFFFFFF; $res2 = $nr2 & 0x7FFFFFFF;
-    return strtoupper(sprintf("%08x%08x", $res1, $res2)); // 16 HEX
-}
-function old_password_ascii_hex(string $pwd, PDO $pdo): string {
-    try {
-        $stmt = $pdo->query("SELECT OLD_PASSWORD(".$pdo->quote($pwd).")");
-        $h = $stmt ? $stmt->fetchColumn() : null;
-        if ($h && preg_match('/^[0-9A-Fa-f]{16}$/', $h)) return strtoupper($h);
-    } catch (Throwable $e) { /* ignore */ }
-    return mysql_old_password_hex_php($pwd);
-}
-
 if ($action==='_meta_tables'){
   $db=$c['db']['database'];
   $st=$pdo->prepare("SELECT TABLE_NAME name, TABLE_COMMENT comment FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=:db ORDER BY 1");
@@ -73,7 +46,7 @@ if ($action==='auth_login'){
   } elseif($algo==='md5_raw16'){
       $ok = (strtoupper(bin2hex($user[$pf]))===strtoupper(md5($pwd)));
   } elseif($algo==='old_password'){
-      $h16 = old_password_ascii_hex($pwd, $pdo); // 16 HEX
+      $h16 = balp_old_password_hex($pwd, $pdo); // 16 HEX
       $stored = $user[$pf];
       if ($stored!==null) {
           if (is_string($stored) && strlen($stored)===16 && ctype_xdigit($stored)) {

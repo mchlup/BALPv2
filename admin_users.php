@@ -40,13 +40,35 @@ try {
 
 /** Datové sloupce */
 $has_dtod = $has_dtdo = false;
+$columns_meta = [];
+$password_column_meta = null;
 try {
-  $ci = $pdo->prepare("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=:s AND TABLE_NAME=:t");
+  $ci = $pdo->prepare("SELECT COLUMN_NAME, DATA_TYPE, COLUMN_TYPE, CHARACTER_MAXIMUM_LENGTH FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=:s AND TABLE_NAME=:t");
   $ci->execute([':s'=>$schema, ':t'=>$tab]);
-  $names = array_map(fn($r)=>$r['COLUMN_NAME'], $ci->fetchAll(PDO::FETCH_ASSOC));
-  $has_dtod = in_array('dtod', $names, true);
-  $has_dtdo = in_array('dtdo', $names, true);
+  $columns_meta = $ci->fetchAll(PDO::FETCH_ASSOC);
+  foreach ($columns_meta as $col) {
+    $name = $col['COLUMN_NAME'];
+    if ($name === 'dtod') $has_dtod = true;
+    if ($name === 'dtdo') $has_dtdo = true;
+    if ($name === $pf) $password_column_meta = $col;
+  }
 } catch (Throwable $e) {}
+
+$password_store_raw8 = null;
+try {
+  $probe = $pdo->query("SELECT HEX(`$pf`) FROM `$tab` WHERE `$pf` IS NOT NULL AND `$pf`<>'' LIMIT 1");
+  $existing = $probe ? $probe->fetchColumn() : null;
+  if (is_string($existing) && $existing !== '') {
+    $password_store_raw8 = (strlen($existing) === 16);
+  }
+} catch (Throwable $e) {}
+if ($password_store_raw8 === null && $password_column_meta) {
+  $type = strtolower((string)($password_column_meta['DATA_TYPE'] ?? ''));
+  if ($type !== '') {
+    $password_store_raw8 = (strpos($type, 'binary') !== false || strpos($type, 'blob') !== false);
+  }
+}
+if ($password_store_raw8 === null) $password_store_raw8 = false;
 
 $default_login_scheme = $c['auth']['login_scheme'] ?? 'usr_is_plain';
 $default_pass_algo    = $c['auth']['password_algo'] ?? 'old_password';
@@ -62,13 +84,10 @@ function hash_login($login,$scheme){
     default:                    return $login; // usr_is_plain
   }
 }
-function hash_password_algo($pwd,$algo,$pdo){
+function hash_password_algo($pwd,$algo,$pdo,$storeOldPasswordRaw){
   switch($algo){
     case 'md5_raw16':   return pack('H*', md5($pwd));
-    case 'old_password': {
-      $hex = $pdo->query("SELECT HEX(OLD_PASSWORD(".$pdo->quote($pwd)."))")->fetchColumn();
-      return pack('H*', $hex);
-    }
+    case 'old_password': return $storeOldPasswordRaw ? balp_old_password_raw($pwd,$pdo) : balp_old_password_hex($pwd,$pdo);
     case 'plaintext':   return $pwd;
     case 'bcrypt':      return password_hash($pwd, PASSWORD_BCRYPT); // nevejde se do VARBINARY(16)
     default:            return pack('H*', md5($pwd));
@@ -104,8 +123,12 @@ if ($_SERVER['REQUEST_METHOD']==='POST' && csrf_ok()){
     else {
       try{
         $u = hash_login($login,$ls);
-        $p = hash_password_algo($pwd,$pa,$pdo);
-        $cols = [$uf, $pf]; $vals = [':u'=>[$u, PDO::PARAM_LOB], ':p'=>[$p, PDO::PARAM_LOB]];
+        $p = hash_password_algo($pwd,$pa,$pdo,$password_store_raw8);
+        $cols = [$uf, $pf];
+        $loginParam = ($ls === 'usr_is_plain') ? PDO::PARAM_STR : PDO::PARAM_LOB;
+        $pwdParam = ($pa === 'md5_raw16' || ($pa === 'old_password' && $password_store_raw8)) ? PDO::PARAM_LOB : PDO::PARAM_STR;
+        if ($pa === 'bcrypt') $pwdParam = PDO::PARAM_STR;
+        $vals = [':u'=>[$u, $loginParam], ':p'=>[$p, $pwdParam]];
         if ($has_dtod){ $cols[]='dtod'; $vals[':d1']=[$dtod, PDO::PARAM_STR]; }
         if ($has_dtdo){ $cols[]='dtdo'; $vals[':d2']=[$dtdo, PDO::PARAM_STR]; }
         $sql = "INSERT INTO `$tab` (`".implode("`,`",$cols)."`) VALUES (".implode(",", array_keys($vals)).")";
@@ -212,6 +235,7 @@ ob_start();
         </div>
 
         <p class="mt-2 mb-0"><small class="text-muted">VARBINARY(16) ⇒ použijte <b>old_password</b> nebo <b>md5_raw16</b>. Bcrypt/MD5 hex(32) se nevejdou.</small></p>
+        <p class="text-muted mb-0"><small>Režim ukládání OLD_PASSWORD: <b><?=$password_store_raw8 ? 'RAW 8&nbsp;bajtů (UNHEX)' : 'ASCII HEX (16 znaků)'?></b>.</small></p>
         <button class="btn btn-primary mt-3">Vytvořit</button>
       </form>
     </div>
