@@ -81,7 +81,7 @@
 
   // ---------- SUROVINY LIST + MODAL ----------
   const sur = {
-    state: { search:'', limit:50, offset:0, sort_col:'id', sort_dir:'ASC', total:0 },
+    state: { search:'', limit:50, offset:0, sort_col:'id', sort_dir:'ASC', total:0, olej:'', platnost:'' },
     els: {},
     init() {
       this.els.search = $('#sur-search');
@@ -91,6 +91,13 @@
       this.els.prev = $('#sur-prev');
       this.els.next = $('#sur-next');
       this.els.btnNew = $('#sur-new');
+      this.els.olej = $('#sur-filter-olej');
+      this.els.platnost = $('#sur-filter-platnost');
+      this.els.btnExport = $('#sur-export');
+      this.els.btnReset = $('#sur-reset');
+
+      if (this.els.olej) this.state.olej = this.els.olej.value;
+      if (this.els.platnost) this.state.platnost = this.els.platnost.value;
 
       // Modal elements
       this.modalEl = $('#surModal');
@@ -107,9 +114,23 @@
       // Search debounce
       let t = null;
       this.els.search.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => { this.state.search = this.els.search.value.trim(); this.state.offset=0; this.load(); }, 250); });
+      this.state.limit = parseInt(this.els.limit.value,10)||50;
       this.els.limit.addEventListener('change', () => { this.state.limit = parseInt(this.els.limit.value,10)||50; this.state.offset=0; this.load(); });
       this.els.prev.addEventListener('click', () => { if (this.state.offset===0) return; this.state.offset = Math.max(0, this.state.offset - this.state.limit); this.load(); });
       this.els.next.addEventListener('click', () => { if (this.state.offset + this.state.limit >= this.state.total) return; this.state.offset += this.state.limit; this.load(); });
+
+      if (this.els.olej) {
+        this.els.olej.addEventListener('change', () => { this.state.olej = this.els.olej.value; this.state.offset = 0; this.load(); });
+      }
+      if (this.els.platnost) {
+        this.els.platnost.addEventListener('change', () => { this.state.platnost = this.els.platnost.value; this.state.offset = 0; this.load(); });
+      }
+      if (this.els.btnExport) {
+        this.els.btnExport.addEventListener('click', () => this.exportCsv());
+      }
+      if (this.els.btnReset) {
+        this.els.btnReset.addEventListener('click', () => this.resetFilters());
+      }
 
       // Sorting
       $$('#sur-table thead th.sortable').forEach(th => {
@@ -142,10 +163,16 @@
     },
     async load(force=false) {
       try {
-        const q = new URLSearchParams({
-          search: this.state.search, limit: String(this.state.limit), offset: String(this.state.offset),
-          sort_col: this.state.sort_col, sort_dir: this.state.sort_dir
-        }).toString();
+        const params = new URLSearchParams({
+          search: this.state.search,
+          limit: String(this.state.limit),
+          offset: String(this.state.offset),
+          sort_col: this.state.sort_col,
+          sort_dir: this.state.sort_dir
+        });
+        if (this.state.olej !== '') params.set('olej', this.state.olej);
+        if (this.state.platnost) params.set('platnost', this.state.platnost);
+        const q = params.toString();
         const data = await apiFetch('/balp2/api/sur_list.php?' + q);
         this.state.total = data.total || 0;
         if (!Array.isArray(data.items) || data.items.length===0) {
@@ -219,7 +246,13 @@
         hideAlert();
         const data = await apiFetch('/balp2/api/sur_get.php?id=' + encodeURIComponent(id));
         this.fillForm(data.item || {});
-        this.meta.textContent = `ID #${id}`;
+        const metaParts = [`ID #${id}`];
+        if (data.meta) {
+          if (typeof data.meta.usage_polotovary === 'number') metaParts.push(`Polotovary: ${data.meta.usage_polotovary}`);
+          if (typeof data.meta.usage_total === 'number') metaParts.push(`Položky v recepturách: ${data.meta.usage_total}`);
+          if (data.meta.last_used) metaParts.push(`Poslední platnost od: ${data.meta.last_used}`);
+        }
+        this.meta.textContent = metaParts.join(' • ');
         this.setEditMode(false);
         this.modal.show();
       } catch (e) { showAlert('Načtení detailu selhalo: ' + e.message, 'danger'); }
@@ -249,6 +282,33 @@
       try { await apiFetch('/balp2/api/sur_clone.php?id=' + encodeURIComponent(id), { method:'POST' });
         this.modal.hide(); showAlert('Vytvořena kopie.', 'success'); this.load(true);
       } catch (e) { showAlert('Klonování selhalo: ' + e.message, 'danger'); }
+    },
+    resetFilters() {
+      this.state = { ...this.state, search:'', limit:50, offset:0, sort_col:'id', sort_dir:'ASC', olej:'', platnost:'', total:0 };
+      if (this.els.search) this.els.search.value = '';
+      if (this.els.limit) { this.els.limit.value = '50'; this.state.limit = 50; }
+      if (this.els.olej) this.els.olej.value = '';
+      if (this.els.platnost) this.els.platnost.value = '';
+      if (this.els.summary) this.els.summary.textContent = '—';
+      this.load(true);
+    },
+    exportCsv() {
+      try {
+        const params = new URLSearchParams({
+          search: this.state.search,
+          sort_col: this.state.sort_col,
+          sort_dir: this.state.sort_dir,
+          all: '1'
+        });
+        if (this.state.olej !== '') params.set('olej', this.state.olej);
+        if (this.state.platnost) params.set('platnost', this.state.platnost);
+        const token = getToken();
+        if (token) params.set('token', token);
+        const url = '/balp2/api/sur_export_csv.php?' + params.toString();
+        window.open(url, '_blank', 'noopener');
+      } catch (e) {
+        showAlert('Export selhal: ' + (e.message || e), 'danger');
+      }
     }
   };
 
