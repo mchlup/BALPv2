@@ -78,6 +78,18 @@
               <input type="text" class="form-control" id="sur-search" placeholder="Zadejte část názvu nebo čísla…">
             </div>
             <div>
+              <label class="form-label mb-1 d-block">Filtrovat olej</label>
+              <select id="sur-filter-olej" class="form-select">
+                <option value="">Vše</option>
+                <option value="1">Jen olejové</option>
+                <option value="0">Bez oleje</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label mb-1 d-block" for="sur-filter-platnost">Platnost k datu</label>
+              <input type="date" class="form-control" id="sur-filter-platnost" placeholder="YYYY-MM-DD">
+            </div>
+            <div>
               <label class="form-label mb-1 d-block">Záznamů na stránku</label>
               <select id="sur-limit" class="form-select">
                 <option>10</option>
@@ -86,8 +98,10 @@
                 <option>100</option>
               </select>
             </div>
-            <div class="ms-auto">
-              <button id="sur-new" class="btn btn-success">Nová surovina</button>
+            <div class="ms-auto d-flex gap-2">
+              <button type="button" id="sur-reset" class="btn btn-outline-secondary">Reset filtrů</button>
+              <button type="button" id="sur-export" class="btn btn-outline-secondary">Export CSV</button>
+              <button type="button" id="sur-new" class="btn btn-success">Nová surovina</button>
             </div>
           </div>
 

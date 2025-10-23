@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/auth_helpers.php';
 require_once __DIR__ . '/jwt_helper.php';
+require_once __DIR__ . '/sur_filters.php';
 header('Content-Type: application/json; charset=utf-8');
 
 $config_file = dirname(__DIR__) . '/config/config.php';
@@ -21,23 +22,22 @@ try {
   $pdo = new PDO($db_dsn, $db_user, $db_pass, [ PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC, PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4" ]);
 } catch (Exception $e) { http_response_code(500); echo json_encode(['error'=>$e->getMessage()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE); exit; }
 
-$search = trim((string)($_GET['search'] ?? ''));
 $limit  = max(1, min(200, (int)($_GET['limit'] ?? 50)));
 $offset = max(0, (int)($_GET['offset'] ?? 0));
-$sort_col = $_GET['sort_col'] ?? 'nazev';
+$sort_col = sur_normalize_sort_column($_GET['sort_col'] ?? 'nazev');
 $sort_dir = strtoupper($_GET['sort_dir'] ?? 'ASC');
 $sort_dir = ($sort_dir === 'DESC') ? 'DESC' : 'ASC';
-$allowed_cols = ['id','cislo','nazev','sh','okp','olej'];
-if (!in_array($sort_col, $allowed_cols, true)) $sort_col = 'nazev';
+$params = [];
+$where = sur_build_where($_GET, $params);
 
-$where = '1'; $params = [];
-if ($search !== '') { $where .= ' AND (nazev LIKE :q OR cislo LIKE :q)'; $params[':q'] = '%' . $search . '%'; }
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM balp_sur WHERE $where");
+sur_bind_params($stmt, $params);
+$stmt->execute();
+$total = (int)$stmt->fetchColumn();
 
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM balp_sur WHERE $where"); $stmt->execute($params); $total = (int)$stmt->fetchColumn();
-
-$sql = "SELECT id, cislo, nazev, sh, okp, olej, pozn FROM balp_sur WHERE $where ORDER BY $sort_col $sort_dir LIMIT :limit OFFSET :offset";
+$sql = "SELECT id, cislo, nazev, sh, okp, olej, pozn, dtod, dtdo FROM balp_sur WHERE $where ORDER BY $sort_col $sort_dir LIMIT :limit OFFSET :offset";
 $stmt = $pdo->prepare($sql);
-foreach ($params as $k=>$v) $stmt->bindValue($k, $v, PDO::PARAM_STR);
+sur_bind_params($stmt, $params);
 $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
 $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $stmt->execute();

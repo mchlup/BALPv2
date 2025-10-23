@@ -26,4 +26,16 @@ if ($id <= 0) { http_response_code(400); echo json_encode(['error'=>'missing id'
 $sql = "SELECT id, cislo, nazev, sh, sus_sh, sus_hmot, sus_obj, okp, olej, pozn, dtod, dtdo FROM balp_sur WHERE id=:id LIMIT 1";
 $stmt = $pdo->prepare($sql); $stmt->execute([':id'=>$id]); $row = $stmt->fetch();
 if (!$row) { http_response_code(404); echo json_encode(['error'=>'not found'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE); exit; }
-echo json_encode(['item'=>$row], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+$meta = ['usage_total'=>0, 'usage_polotovary'=>0, 'last_used'=>null];
+try {
+  $stats = $pdo->prepare("SELECT COUNT(*) AS cnt, COUNT(DISTINCT idpolfin) AS polotovary, MAX(dtod) AS last_dtod FROM balp_pol_rec WHERE idsur=:id");
+  $stats->execute([':id'=>$id]);
+  $agg = $stats->fetch();
+  if ($agg) {
+    $meta['usage_total'] = (int)($agg['cnt'] ?? 0);
+    $meta['usage_polotovary'] = (int)($agg['polotovary'] ?? 0);
+    $last = $agg['last_dtod'] ?? null;
+    if ($last) $meta['last_used'] = substr((string)$last, 0, 10);
+  }
+} catch (Throwable $e) {}
+echo json_encode(['item'=>$row, 'meta'=>$meta], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
