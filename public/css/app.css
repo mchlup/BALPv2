@@ -4,6 +4,27 @@ body { min-height: 100vh; }
 .table thead th.sortable { cursor: pointer; user-select: none; }
 #polRowModal .modal-footer .btn-group .btn { min-width: 8.5rem; }
 
+.filter-toolbar .form-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--bs-gray-700);
+}
+.filter-toolbar .toolbar-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.filter-toolbar .toolbar-actions .btn {
+  min-width: 9rem;
+}
+@media (max-width: 767.98px) {
+  .filter-toolbar .toolbar-actions .btn {
+    width: 100%;
+  }
+}
+
+
 /* VP modal: stick header/footer + solid background */
 #vpModal .modal-header,
 #vpModal .modal-footer {
@@ -16,7 +37,7 @@ body { min-height: 100vh; }
 #vpModal .modal-header { top: 0; border-bottom: 1px solid var(--bs-border-color); }
 #vpModal .modal-footer { bottom: 0; border-top: 1px solid var(--bs-border-color); }
 
-/* --- VP modal: aby "Zavøít" nebylo na prùhledném pozadí --- */
+/* --- VP modal: aby "ZavÅ™Ã­t" nebylo na prÅ¯hlednÃ©m pozadÃ­ --- */
 #vpModal .modal-header,
 #vpModal .modal-footer {
   position: sticky;
@@ -26,29 +47,29 @@ body { min-height: 100vh; }
 #vpModal .modal-header { top: 0;    border-bottom: 1px solid var(--bs-border-color); }
 #vpModal .modal-footer { bottom: 0;  border-top:    1px solid var(--bs-border-color); }
 
-/* Skryj "Uživatelé" v modálu VP i kdyby DOM byl jiný */
+/* Skryj "UÅ¾ivatelÃ©" v modÃ¡lu VP i kdyby DOM byl jinÃ½ */
 #vpModal .nav-tabs .nav-link[href="#vp-users"],
 #vpModal .nav-tabs [data-bs-target="#vp-users"],
 #vpModal #vp-users { display: none !important; }
 
-/* autocomplete/dropdown v modálu – vždy nad obsahem a skrolovatelný */
+/* autocomplete/dropdown v modÃ¡lu â€“ vÅ¾dy nad obsahem a skrolovatelnÃ½ */
 #polEditorModal .ui-autocomplete,
 #polEditorModal .tt-menu,
 #polEditorModal .dropdown-menu,
 #polEditorModal .autocomplete-menu {
-  z-index: 2005;          /* vyšší než .modal (Bootstrap ~1055–1060) */
+  z-index: 2005;          /* vyÅ¡Å¡Ã­ neÅ¾ .modal (Bootstrap ~1055â€“1060) */
   max-height: 280px;
   overflow-y: auto;
-  width: 100% !important; /* zarovnej šíøku na vstup */
+  width: 100% !important; /* zarovnej Å¡Ã­Å™ku na vstup */
 }
 
-/* nenech to uøíznout tabulkou/øádkem */
+/* nenech to uÅ™Ã­znout tabulkou/Å™Ã¡dkem */
 #polEditorModal .table-responsive,
 #polEditorModal .table {
   overflow: visible;
 }
 
-/* kontejner kolem inputu, aby absolutnì pozicované menu mìlo referenci */
+/* kontejner kolem inputu, aby absolutnÄ› pozicovanÃ© menu mÄ›lo referenci */
 #polEditorModal .autocomplete-wrap {
   position: relative;
 }

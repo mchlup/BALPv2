@@ -271,10 +271,18 @@
   const btnDel = document.getElementById('btn-nh-delete');
   const btnNew = document.getElementById('nh-new');
   const odsContainer = document.getElementById('nh-ods-container');
+  let isCreating = false;
   if (btnEdit) btnEdit.addEventListener('click', () => setEditMode(true));
   if (btnSave) btnSave.addEventListener('click', () => saveDetail());
   if (btnDel) btnDel.addEventListener('click', () => deleteCurrent());
   if (btnNew) btnNew.addEventListener('click', () => newItem());
+  if (modalEl) {
+    modalEl.addEventListener('hidden.bs.modal', () => {
+      isCreating = false;
+      setEditMode(false);
+      if (btnDel) btnDel.classList.remove('d-none');
+    });
+  }
 
   const escapeHtml = (value) => {
     if (value === null || value === undefined) return '';
@@ -411,8 +419,9 @@
 
   function setEditMode(on) {
     Object.keys(f).filter(k => k !== 'id').forEach(k => { if (f[k]) f[k].disabled = !on; });
-    if (btnEdit) btnEdit.classList.toggle('d-none', on);
+    if (btnEdit) btnEdit.classList.toggle('d-none', on || isCreating);
     if (btnSave) btnSave.classList.toggle('d-none', !on);
+    if (btnDel) btnDel.classList.toggle('d-none', isCreating);
   }
   function fillForm(row) {
     const set = (k, v) => { if (f[k]) f[k].value = (v ?? ''); };
@@ -451,6 +460,7 @@
       renderOds(data.ods || []);
       if (detailMeta) detailMeta.textContent = `ID #${id}`;
       setEditMode(false);
+      isCreating = false;
       modal.show();
     } catch (e) {
       console.error('Detail load failed:', e);
@@ -459,10 +469,27 @@
   }
   function newItem() {
     if (!modal) return;
-    fillForm({});
+    const today = new Date();
+    const formatDate = (d) => {
+      if (!(d instanceof Date) || Number.isNaN(d.getTime())) return '';
+      return d.toISOString().slice(0, 10);
+    };
+    fillForm({
+      id: '',
+      kod: '',
+      nazev: '',
+      pozn: '',
+      dtod: formatDate(today),
+      dtdo: '9999-12-31',
+    });
     renderOds([]);
     if (detailMeta) detailMeta.textContent = 'Nová NH';
+    isCreating = true;
     setEditMode(true);
+    if (f.kod) {
+      f.kod.focus();
+      f.kod.select?.();
+    }
     modal.show();
   }
   async function saveDetail() {
@@ -471,6 +498,7 @@
       await apiFetch(apiBase + '/api/nh_upsert.php', { method: 'POST', body: JSON.stringify(payload) });
       if (modal) modal.hide();
       state.offset = 0;
+      isCreating = false;
       await load(true);
     } catch (e) {
       console.error('Save failed:', e);
