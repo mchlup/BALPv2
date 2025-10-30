@@ -270,10 +270,144 @@
   const btnSave = document.getElementById('btn-nh-save');
   const btnDel = document.getElementById('btn-nh-delete');
   const btnNew = document.getElementById('nh-new');
+  const odsContainer = document.getElementById('nh-ods-container');
   if (btnEdit) btnEdit.addEventListener('click', () => setEditMode(true));
   if (btnSave) btnSave.addEventListener('click', () => saveDetail());
   if (btnDel) btnDel.addEventListener('click', () => deleteCurrent());
   if (btnNew) btnNew.addEventListener('click', () => newItem());
+
+  const escapeHtml = (value) => {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+  const fmtDate = (value) => {
+    if (!value) return '';
+    return String(value).substring(0, 10);
+  };
+  const fmtNumber = (value) => {
+    if (value === null || value === undefined || value === '') return '';
+    const num = Number(value);
+    if (!Number.isFinite(num)) return escapeHtml(value);
+    return num.toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+  const renderOds = (list) => {
+    if (!odsContainer) return;
+    if (!Array.isArray(list) || list.length === 0) {
+      odsContainer.innerHTML = '<div class="text-muted small">Žádné navázané varianty nebyly nalezeny.</div>';
+      return;
+    }
+    const renderPriceSummary = (price) => {
+      if (!price) return '<span class="text-muted">—</span>';
+      const rows = [];
+      if (price.sur_nak !== undefined && price.sur_nak !== null) rows.push(`<div>SuR nákup: <strong>${fmtNumber(price.sur_nak)}</strong></div>`);
+      if (price.mat_nak !== undefined && price.mat_nak !== null) rows.push(`<div>Materiál nákup: <strong>${fmtNumber(price.mat_nak)}</strong></div>`);
+      if (price.vn_kg !== undefined && price.vn_kg !== null) rows.push(`<div>VN / kg: <strong>${fmtNumber(price.vn_kg)}</strong></div>`);
+      if (price.uvn_kg !== undefined && price.uvn_kg !== null) rows.push(`<div>ÚVN / kg: <strong>${fmtNumber(price.uvn_kg)}</strong></div>`);
+      if (rows.length === 0) rows.push('<div class="text-muted">—</div>');
+      const validity = `${fmtDate(price.dtod) || '—'} – ${fmtDate(price.dtdo) || '—'}`;
+      rows.push(`<div class="small text-muted">Platnost: ${escapeHtml(validity)}</div>`);
+      return rows.join('');
+    };
+    const renderPriceHistory = (prices) => {
+      if (!Array.isArray(prices) || prices.length === 0) {
+        return '<div class="text-muted small">Historie cen není k dispozici.</div>';
+      }
+      const rows = prices.map((p) => `
+        <tr>
+          <td>${escapeHtml(fmtDate(p.dtod) || '')}</td>
+          <td>${escapeHtml(fmtDate(p.dtdo) || '')}</td>
+          <td class="text-end">${fmtNumber(p.sur_nak)}</td>
+          <td class="text-end">${fmtNumber(p.mat_nak)}</td>
+          <td class="text-end">${fmtNumber(p.vn_kg)}</td>
+          <td class="text-end">${fmtNumber(p.uvn_kg)}</td>
+        </tr>
+      `).join('');
+      return `
+        <div class="mt-3">
+          <div class="fw-semibold small text-uppercase text-muted mb-1">Historie cen</div>
+          <div class="table-responsive">
+            <table class="table table-sm table-striped table-bordered align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Platnost od</th>
+                  <th>Platnost do</th>
+                  <th class="text-end">SuR nákup</th>
+                  <th class="text-end">Materiál nákup</th>
+                  <th class="text-end">VN / kg</th>
+                  <th class="text-end">ÚVN / kg</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    };
+    const renderRecipe = (recipe) => {
+      if (!Array.isArray(recipe) || recipe.length === 0) {
+        return '<div class="text-muted small">Receptura není evidována.</div>';
+      }
+      const rows = recipe.map((r) => {
+        const typ = r.typ === 'sur' ? 'Surovina' : (r.typ === 'pol' ? 'Polotovar' : '');
+        return `
+          <tr>
+            <td>${escapeHtml(r.techpor ?? '')}</td>
+            <td>${escapeHtml(typ)}</td>
+            <td>${escapeHtml(r.cislo ?? '')}</td>
+            <td>${escapeHtml(r.nazev ?? '')}</td>
+            <td class="text-end">${fmtNumber(r.gkg)}</td>
+          </tr>
+        `;
+      }).join('');
+      return `
+        <div class="mt-3">
+          <div class="fw-semibold small text-uppercase text-muted mb-1">Aktuální receptura</div>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Tech. poř.</th>
+                  <th>Typ</th>
+                  <th>Kód</th>
+                  <th>Název</th>
+                  <th class="text-end">g / kg</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    };
+    odsContainer.innerHTML = list.map((item) => {
+      const headerTitle = [item.cislo ? `<strong>${escapeHtml(item.cislo)}</strong>` : '', item.nazev ? escapeHtml(item.nazev) : '']
+        .filter(Boolean)
+        .join(' – ');
+      const validity = `${fmtDate(item.dtod) || '—'} – ${fmtDate(item.dtdo) || '—'}`;
+      return `
+        <div class="border rounded p-3 shadow-sm">
+          <div class="d-flex flex-wrap justify-content-between gap-3">
+            <div>
+              <div class="fw-semibold">${headerTitle || 'Bez názvu'}</div>
+              <div class="small text-muted">Platnost: ${escapeHtml(validity)}</div>
+              ${item.pozn ? `<div class="small mt-1">${escapeHtml(item.pozn)}</div>` : ''}
+            </div>
+            <div class="text-end small">
+              <div class="fw-semibold text-uppercase text-muted">Aktuální cena</div>
+              ${renderPriceSummary(item.active_price)}
+            </div>
+          </div>
+          ${renderPriceHistory(item.prices)}
+          ${renderRecipe(item.recipe)}
+        </div>
+      `;
+    }).join('');
+  };
 
   function setEditMode(on) {
     Object.keys(f).filter(k => k !== 'id').forEach(k => { if (f[k]) f[k].disabled = !on; });
@@ -314,6 +448,7 @@
       const data = await apiFetch(apiBase + '/api/nh_get.php?id=' + encodeURIComponent(id));
       const row = data.item ?? data;
       fillForm(row);
+      renderOds(data.ods || []);
       if (detailMeta) detailMeta.textContent = `ID #${id}`;
       setEditMode(false);
       modal.show();
@@ -325,6 +460,7 @@
   function newItem() {
     if (!modal) return;
     fillForm({});
+    renderOds([]);
     if (detailMeta) detailMeta.textContent = 'Nová NH';
     setEditMode(true);
     modal.show();
