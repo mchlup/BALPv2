@@ -67,6 +67,62 @@ if (!function_exists('balp_nh_table_name')) {
     }
 }
 
+if (!function_exists('balp_nh_get_columns')) {
+    function balp_nh_get_columns(PDO $pdo, bool $forceReload = false): array
+    {
+        static $cache = null;
+        if ($forceReload) {
+            $cache = null;
+        }
+        if ($cache !== null) {
+            return $cache;
+        }
+
+        $columns = [];
+        try {
+            $tableQuoted = sql_quote_ident(balp_nh_table_name());
+            $stmt = $pdo->query('SHOW COLUMNS FROM ' . $tableQuoted);
+            if ($stmt) {
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    if (!empty($row['Field'])) {
+                        $columns[strtolower((string)$row['Field'])] = $row;
+                    }
+                }
+            }
+        } catch (Throwable $ignored) {
+            $columns = [];
+        }
+
+        return $cache = $columns;
+    }
+}
+
+if (!function_exists('balp_nh_has_column')) {
+    function balp_nh_has_column(PDO $pdo, string $column): bool
+    {
+        $columns = balp_nh_get_columns($pdo);
+        return isset($columns[strtolower($column)]);
+    }
+}
+
+if (!function_exists('balp_ensure_nh_column')) {
+    function balp_ensure_nh_column(PDO $pdo, string $column, string $definition): void
+    {
+        if (balp_nh_has_column($pdo, $column)) {
+            return;
+        }
+
+        $tableQuoted = sql_quote_ident(balp_nh_table_name());
+        try {
+            $sql = 'ALTER TABLE ' . $tableQuoted . ' ADD COLUMN ' . $definition;
+            $pdo->exec($sql);
+            balp_nh_get_columns($pdo, true);
+        } catch (Throwable $ignored) {
+            // Pokud se sloupec nepodaří přidat, pokračujeme bez chyby.
+        }
+    }
+}
+
 if (!function_exists('balp_ensure_nh_table')) {
     function balp_ensure_nh_table(PDO $pdo): void
     {
@@ -80,6 +136,7 @@ if (!function_exists('balp_ensure_nh_table')) {
         $tableQuoted = sql_quote_ident($table);
 
         if (balp_nh_table_exists($pdo, $table)) {
+            balp_ensure_nh_column($pdo, 'cislo_vp', '`cislo_vp` varchar(64) DEFAULT NULL AFTER `cislo`');
             return;
         }
 
@@ -106,6 +163,7 @@ if (!function_exists('balp_ensure_nh_table')) {
             'CREATE TABLE %s (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `cislo` varchar(32) NOT NULL,
+  `cislo_vp` varchar(64) DEFAULT NULL,
   `nazev` varchar(255) NOT NULL,
   `pozn` text NULL,
   `dtod` datetime NOT NULL DEFAULT \'' . "1970-01-01 00:00:00" . '\',
@@ -120,5 +178,6 @@ if (!function_exists('balp_ensure_nh_table')) {
         );
 
         $pdo->exec($createSql);
+        balp_nh_get_columns($pdo, true);
     }
 }
