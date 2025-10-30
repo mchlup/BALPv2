@@ -1,6 +1,9 @@
 (() => {
   const $  = (s, p=document) => p.querySelector(s);
 
+  const apiBase = (window.API_URL || '/balp2/api.php').replace(/\/api\.php$/i, '');
+  const nhEndpoint = apiBase + '/api/nh_list.php';
+
   const el = {
     search: $('#nh-search'),
     limit:  $('#nh-limit'),
@@ -77,13 +80,11 @@
     setMeta('Načítám…');
     try {
       const params = new URLSearchParams({
-        action: 'list',
-        table: 'balp_nh',
         limit: String(state.limit),
         offset: String(state.offset),
       });
       if (state.q) params.set('q', state.q);
-      const data = await apiFetch(`/api.php?${params.toString()}`);
+      const data = await apiFetch(`${nhEndpoint}?${params.toString()}`);
       state.total = data.total ?? 0;
       renderRows(Array.isArray(data.items) ? data.items : []);
       const hasItems = state.total > 0;
