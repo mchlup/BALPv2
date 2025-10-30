@@ -27,6 +27,12 @@ try {
     $limit = max(1, min(200, (int)($_GET['limit'] ?? 50)));
     $offset = max(0, (int)($_GET['offset'] ?? 0));
     $search = trim((string)($_GET['q'] ?? ''));
+    $sortCol = strtolower((string)($_GET['sort_col'] ?? 'cislo'));
+    $sortDir = strtoupper((string)($_GET['sort_dir'] ?? 'ASC')) === 'DESC' ? 'DESC' : 'ASC';
+    $allowedSort = ['id','cislo','nazev','pozn','dtod','dtdo','kategorie_id'];
+    if (!in_array($sortCol, $allowedSort, true)) {
+        $sortCol = 'cislo';
+    }
 
     $codeFrom = $_GET['cislo_od'] ?? $_GET['od'] ?? null;
     $codeTo   = $_GET['cislo_do'] ?? $_GET['do'] ?? null;
@@ -69,9 +75,12 @@ try {
     }
 
     if ($active !== null && $active !== '') {
-        $flag = in_array(strtolower((string)$active), ['1', 'true', 'yes', 'ano'], true);
-        if ($flag) {
-            $where[] = '(dtod <= NOW() AND dtdo > NOW())';
+        $activeNorm = strtolower(trim((string)$active));
+        $activeCond = '((dtod IS NULL OR dtod <= NOW()) AND (dtdo IS NULL OR dtdo > NOW()))';
+        if (in_array($activeNorm, ['1', 'true', 'yes', 'ano'], true)) {
+            $where[] = $activeCond;
+        } elseif (in_array($activeNorm, ['0', 'false', 'no', 'ne'], true)) {
+            $where[] = 'NOT ' . $activeCond;
         }
     }
 
@@ -84,7 +93,7 @@ try {
     $countStmt->execute();
     $total = (int)$countStmt->fetchColumn();
 
-    $sql = "SELECT id, cislo, nazev, pozn, dtod, dtdo, NULL AS kategorie_id FROM $nhTable $whereSql ORDER BY cislo LIMIT :limit OFFSET :offset";
+    $sql = "SELECT id, cislo, nazev, pozn, dtod, dtdo, NULL AS kategorie_id FROM $nhTable $whereSql ORDER BY $sortCol $sortDir LIMIT :limit OFFSET :offset";
     $stmt = $pdo->prepare($sql);
     foreach ($params as $k => $v) {
         $stmt->bindValue($k, $v);
