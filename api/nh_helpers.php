@@ -1,15 +1,69 @@
 <?php
 require_once __DIR__ . '/../helpers.php';
 
+if (!function_exists('balp_nh_table_exists')) {
+    function balp_nh_table_exists(PDO $pdo, string $table): bool
+    {
+        try {
+            $stmt = $pdo->prepare(
+                'SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table LIMIT 1'
+            );
+            $stmt->execute([':table' => $table]);
+            return (bool)$stmt->fetchColumn();
+        } catch (Throwable $e) {
+            try {
+                $pdo->query("SELECT 1 FROM " . sql_quote_ident($table) . " LIMIT 0");
+                return true;
+            } catch (Throwable $ignored) {
+                return false;
+            }
+        }
+    }
+}
+
 if (!function_exists('balp_nh_table_name')) {
     function balp_nh_table_name(): string
     {
-        $config = cfg();
-        $table = $config['tables']['nh'] ?? 'balp_nh';
-        if (!is_string($table) || $table === '') {
-            $table = 'balp_nh';
+        static $resolved = null;
+        if ($resolved !== null) {
+            return $resolved;
         }
-        return $table;
+
+        $config = cfg();
+        $candidates = [];
+
+        $configured = $config['tables']['nh'] ?? null;
+        if (is_string($configured)) {
+            $configured = trim($configured);
+            if ($configured !== '') {
+                $candidates[] = $configured;
+            }
+        }
+
+        // prefer known legacy table names
+        foreach (['balp_nhods', 'balp_nh'] as $candidate) {
+            if (!in_array($candidate, $candidates, true)) {
+                $candidates[] = $candidate;
+            }
+        }
+
+        $pdo = null;
+        try {
+            $pdo = db();
+        } catch (Throwable $ignored) {
+            $pdo = null;
+        }
+
+        if ($pdo instanceof PDO) {
+            foreach ($candidates as $candidate) {
+                if (balp_nh_table_exists($pdo, $candidate)) {
+                    return $resolved = $candidate;
+                }
+            }
+        }
+
+        // fallback to the first candidate if we could not verify existence
+        return $resolved = ($candidates[0] ?? 'balp_nh');
     }
 }
 
@@ -25,23 +79,7 @@ if (!function_exists('balp_ensure_nh_table')) {
         $table = balp_nh_table_name();
         $tableQuoted = sql_quote_ident($table);
 
-        $exists = false;
-        try {
-            $stmt = $pdo->prepare(
-                'SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table LIMIT 1'
-            );
-            $stmt->execute([':table' => $table]);
-            $exists = (bool)$stmt->fetchColumn();
-        } catch (Throwable $e) {
-            try {
-                $pdo->query("SELECT 1 FROM {$tableQuoted} LIMIT 0");
-                $exists = true;
-            } catch (Throwable $ignored) {
-                $exists = false;
-            }
-        }
-
-        if ($exists) {
+        if (balp_nh_table_exists($pdo, $table)) {
             return;
         }
 

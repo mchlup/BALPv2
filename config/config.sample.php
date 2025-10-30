@@ -26,6 +26,6 @@ return [
         'jwt_ttl_minutes' => 120,
     ],
     'tables' => [
-        'nh' => 'balp_nh',
+        'nh' => 'balp_nhods',
     ],
 ];
