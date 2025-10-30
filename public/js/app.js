@@ -2,6 +2,18 @@
   const $ = (s, p=document) => p.querySelector(s);
   const $$ = (s, p=document) => Array.from(p.querySelectorAll(s));
 
+  const escapeHtml = (value) => {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+  const safeCell = (value) => escapeHtml(value ?? '');
+  const safeDate = (value) => (value ? escapeHtml(String(value).substring(0, 10)) : '');
+
   const showAlert = (msg, type='info') => {
     const box = $('#alert-box');
     box.className = `alert alert-${type}`;
@@ -194,13 +206,13 @@
         tr.setAttribute('data-id', r.id);
         tr.style.cursor = 'pointer';
         tr.innerHTML = `
-          <td>${r.id}</td>
-          <td>${r.cislo ?? ''}</td>
-          <td>${r.nazev ?? ''}</td>
-          <td>${r.sh ?? ''}</td>
-          <td>${r.okp ?? ''}</td>
-          <td>${r.olej ?? ''}</td>
-          <td>${r.pozn ?? ''}</td>
+          <td>${safeCell(r.id)}</td>
+          <td>${safeCell(r.cislo)}</td>
+          <td>${safeCell(r.nazev)}</td>
+          <td>${safeCell(r.sh)}</td>
+          <td>${safeCell(r.okp)}</td>
+          <td>${safeCell(r.olej)}</td>
+          <td>${safeCell(r.pozn)}</td>
         `;
         this.els.tableBody.appendChild(tr);
       }
@@ -336,8 +348,8 @@ function loadUsersTab(force = false) {
       pane.dataset.loaded = '1';
     })
     .catch(err => {
-      pane.innerHTML = '<div class="alert alert-danger m-3">Nepodařilo se načíst „Uživatelé“: ' +
-                       err.message + '</div>';
+      const msg = escapeHtml(err?.message || err);
+      pane.innerHTML = `<div class="alert alert-danger m-3">Nepodařilo se načíst „Uživatelé“: ${msg}</div>`;
     });
 }
 
@@ -420,15 +432,15 @@ document.addEventListener('DOMContentLoaded', () => {
       for (const r of items) {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td>${r.id}</td>
-          <td>${r.cislo ?? ''}</td>
-          <td>${r.nazev ?? ''}</td>
-          <td>${r.sh ?? ''}</td>
-          <td>${r.okp ?? ''}</td>
-          <td>${r.olej ?? ''}</td>
-          <td>${r.pozn ?? ''}</td>
-          <td>${r.dtod ? String(r.dtod).substring(0, 10) : ''}</td>
-          <td>${r.dtdo ? String(r.dtdo).substring(0, 10) : ''}</td>
+          <td>${safeCell(r.id)}</td>
+          <td>${safeCell(r.cislo)}</td>
+          <td>${safeCell(r.nazev)}</td>
+          <td>${safeCell(r.sh)}</td>
+          <td>${safeCell(r.okp)}</td>
+          <td>${safeCell(r.olej)}</td>
+          <td>${safeCell(r.pozn)}</td>
+          <td>${safeDate(r.dtod)}</td>
+          <td>${safeDate(r.dtdo)}</td>
         `;
         this.els.tbody.appendChild(tr);
       }

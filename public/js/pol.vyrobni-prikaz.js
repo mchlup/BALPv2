@@ -3,6 +3,17 @@
 (() => {
   const $ = (s, p=document) => p.querySelector(s);
 
+  const escapeHtml = (value) => {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+  const safeCell = (value) => escapeHtml(value ?? '');
+
   /* ---------- Tlačítko "Rozpad (agreg.)" v hlavičce modálu ---------- */
   document.addEventListener('DOMContentLoaded', () => {
     const hdr = document.querySelector('#vpModal .modal-header');
@@ -34,9 +45,19 @@
       if (!r.ok) throw new Error(await r.text());
       const d = await r.json();
 
+      const polCode = safeCell(d.pol?.cislo);
+      const polName = safeCell(d.pol?.nazev);
+      const amountKg = safeCell(Number(d.mnozstvi_kg || 0).toFixed(2));
+      const rowsHtml = (d.flat || []).map((x) => {
+        const code = safeCell(x.cislo);
+        const name = safeCell(x.nazev);
+        const total = safeCell(Number(x.total_g || 0).toFixed(2));
+        return `<tr><td>${code}</td><td>${name}</td><td class="right">${total}</td></tr>`;
+      }).join('');
+
       const w = window.open('', '_blank');
       w.document.write(`<!doctype html><meta charset="utf-8">
-        <title>Rozpad — ${d.pol?.cislo||''} ${d.pol?.nazev||''}</title>
+        <title>Rozpad — ${polCode} ${polName}</title>
         <style>
           body{font-family:system-ui;padding:1rem}
           table{border-collapse:collapse;width:100%}
@@ -45,11 +66,11 @@
           td.right{text-align:right}
         </style>
         <h2>Rozpad (agregované suroviny)</h2>
-        <p>Polotovar: ${d.pol?.cislo||''} ${d.pol?.nazev||''}<br>Vyrobit: ${Number(d.mnozstvi_kg||0).toFixed(2)} kg</p>
+        <p>Polotovar: ${polCode} ${polName}<br>Vyrobit: ${amountKg} kg</p>
         <table>
           <thead><tr><th>Číslo</th><th>Název</th><th class="right">Celkem navážit (g)</th></tr></thead>
           <tbody>
-            ${(d.flat||[]).map(x=>`<tr><td>${x.cislo||''}</td><td>${x.nazev||''}</td><td class="right">${Number(x.total_g||0).toFixed(2)}</td></tr>`).join('')}
+            ${rowsHtml}
           </tbody>
         </table>`);
       w.document.close(); w.focus();
@@ -64,9 +85,12 @@
     const tb   = document.querySelector('#vp-agg-table tbody');
     if (!wrap || !tb) return;
     wrap.style.display = (flat && flat.length) ? '' : 'none';
-    tb.innerHTML = (flat || []).map(x =>
-      `<tr><td>${x.cislo||''}</td><td>${x.nazev||''}</td><td class="text-end">${Number(x.total_g||0).toFixed(2)}</td></tr>`
-    ).join('');
+    tb.innerHTML = (flat || []).map((x) => {
+      const code = safeCell(x.cislo);
+      const name = safeCell(x.nazev);
+      const total = safeCell(Number(x.total_g || 0).toFixed(2));
+      return `<tr><td>${code}</td><td>${name}</td><td class="text-end">${total}</td></tr>`;
+    }).join('');
   };
   window.vp_loadAgg = async function(polId, kg) {
     const h = {'Content-Type':'application/json'};
