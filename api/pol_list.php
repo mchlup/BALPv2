@@ -45,7 +45,7 @@ try {
   $sort_dir = strtoupper((string)($_GET['sort_dir'] ?? 'ASC')) === 'DESC' ? 'DESC' : 'ASC';
 
   // Whitelist columns
-  $allowed_cols = ['id','cislo','nazev','sh','okp','olej','pozn'];
+  $allowed_cols = ['id','cislo','nazev','sh','okp','olej','pozn','dtod','dtdo'];
   if (!in_array($sort_col, $allowed_cols, true)) $sort_col = 'nazev';
 
   // WHERE
@@ -55,6 +55,17 @@ try {
     $where .= ' AND (nazev LIKE :q OR cislo LIKE :q)';
     $params[':q'] = '%' . $search . '%';
   }
+  $olej = trim((string)($_GET['olej'] ?? ''));
+  if ($olej === '1') {
+    $where .= ' AND (olej IS NOT NULL AND olej <> 0)';
+  } elseif ($olej === '0') {
+    $where .= ' AND (olej IS NULL OR olej = 0)';
+  }
+  $platnost = trim((string)($_GET['platnost'] ?? ''));
+  if ($platnost !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $platnost)) {
+    $where .= ' AND ((dtod IS NULL OR dtod <= :platnost) AND (dtdo IS NULL OR dtdo >= :platnost))';
+    $params[':platnost'] = $platnost;
+  }
 
   // Total
   $stmt = $pdo->prepare("SELECT COUNT(*) FROM balp_pol WHERE $where");
@@ -62,7 +73,7 @@ try {
   $total = (int)$stmt->fetchColumn();
 
   // Items
-  $sql = "SELECT id, cislo, nazev, sh, okp, olej, pozn
+  $sql = "SELECT id, cislo, nazev, sh, okp, olej, pozn, dtod, dtdo
           FROM balp_pol
           WHERE $where
           ORDER BY $sort_col $sort_dir

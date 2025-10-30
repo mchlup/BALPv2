@@ -354,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // ---------- POLOTOVARY (list-only) ----------
   const pol = {
-    state: { search:'', limit:50, offset:0, sort_col:'id', sort_dir:'ASC', total:0 },
+    state: { search:'', limit:50, offset:0, sort_col:'id', sort_dir:'ASC', total:0, olej:'', platnost:'' },
     els: {},
     init(){
       this.els.search = document.getElementById('pol-search');
@@ -363,6 +363,9 @@ document.addEventListener('DOMContentLoaded', () => {
       this.els.summary = document.getElementById('pol-summary');
       this.els.prev = document.getElementById('pol-prev');
       this.els.next = document.getElementById('pol-next');
+      this.els.olej = document.getElementById('pol-filter-olej');
+      this.els.platnost = document.getElementById('pol-filter-platnost');
+      this.els.btnReset = document.getElementById('pol-reset');
       if (this.els.search) {
         let t=null;
         this.els.search.addEventListener('input', ()=>{ clearTimeout(t); t=setTimeout(()=>{ this.state.search=this.els.search.value.trim(); this.state.offset=0; this.load(); },250); });
@@ -370,6 +373,17 @@ document.addEventListener('DOMContentLoaded', () => {
       if (this.els.limit) this.els.limit.addEventListener('change', ()=>{ this.state.limit=parseInt(this.els.limit.value,10)||50; this.state.offset=0; this.load(); });
       if (this.els.prev) this.els.prev.addEventListener('click', ()=>{ if(this.state.offset===0) return; this.state.offset=Math.max(0,this.state.offset-this.state.limit); this.load(); });
       if (this.els.next) this.els.next.addEventListener('click', ()=>{ if(this.state.offset+this.state.limit>=this.state.total) return; this.state.offset+=this.state.limit; this.load(); });
+      if (this.els.olej) {
+        this.state.olej = this.els.olej.value;
+        this.els.olej.addEventListener('change', ()=>{ this.state.olej = this.els.olej.value; this.state.offset = 0; this.load(); });
+      }
+      if (this.els.platnost) {
+        this.state.platnost = this.els.platnost.value;
+        this.els.platnost.addEventListener('change', ()=>{ this.state.platnost = this.els.platnost.value; this.state.offset = 0; this.load(); });
+      }
+      if (this.els.btnReset) {
+        this.els.btnReset.addEventListener('click', ()=> this.reset());
+      }
       document.querySelectorAll('#pol-table thead th.sortable').forEach(th=>{
         th.style.cursor='pointer';
         th.addEventListener('click', ()=>{
@@ -387,8 +401,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const q = new URLSearchParams({
           search:this.state.search, limit:String(this.state.limit),
           offset:String(this.state.offset), sort_col:this.state.sort_col, sort_dir:this.state.sort_dir
-        }).toString();
-        const data = await apiFetch('/balp2/api/pol_list.php?'+q);
+        });
+        if (this.state.olej !== '') q.set('olej', this.state.olej);
+        if (this.state.platnost) q.set('platnost', this.state.platnost);
+        const data = await apiFetch('/balp2/api/pol_list.php?'+q.toString());
         this.state.total = data.total || 0;
         this.renderRows(data.items || []);
         const from = Math.min(this.state.total, this.state.offset + 1);
@@ -411,9 +427,20 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${r.okp ?? ''}</td>
           <td>${r.olej ?? ''}</td>
           <td>${r.pozn ?? ''}</td>
+          <td>${r.dtod ? String(r.dtod).substring(0, 10) : ''}</td>
+          <td>${r.dtdo ? String(r.dtdo).substring(0, 10) : ''}</td>
         `;
         this.els.tbody.appendChild(tr);
       }
+    },
+    reset(){
+      this.state = { search:'', limit:50, offset:0, sort_col:'id', sort_dir:'ASC', total:0, olej:'', platnost:'' };
+      if (this.els.search) this.els.search.value = '';
+      if (this.els.limit) { this.els.limit.value = '50'; this.state.limit = 50; }
+      if (this.els.olej) this.els.olej.value = '';
+      if (this.els.platnost) this.els.platnost.value = '';
+      if (this.els.summary) this.els.summary.textContent = '—';
+      this.load(true);
     }
   };
   // ---------- /POLOTOVARY ----------

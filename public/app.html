@@ -82,6 +82,22 @@
               <input type="text" class="form-control" id="nh-search" placeholder="Zadejte část názvu nebo kódu…">
             </div>
             <div>
+              <label class="form-label mb-1 d-block" for="nh-code-from">Číslo od</label>
+              <input type="text" class="form-control" id="nh-code-from" placeholder="Např. 1000">
+            </div>
+            <div>
+              <label class="form-label mb-1 d-block" for="nh-code-to">Číslo do</label>
+              <input type="text" class="form-control" id="nh-code-to" placeholder="Např. 1999">
+            </div>
+            <div>
+              <label class="form-label mb-1 d-block" for="nh-active">Platnost</label>
+              <select id="nh-active" class="form-select">
+                <option value="1" selected>Jen platné</option>
+                <option value="">Vše</option>
+                <option value="0">Jen neplatné</option>
+              </select>
+            </div>
+            <div>
               <label class="form-label mb-1 d-block">Záznamů na stránku</label>
               <select id="nh-limit" class="form-select">
                 <option>10</option>
@@ -90,7 +106,8 @@
                 <option>100</option>
               </select>
             </div>
-            <div class="ms-auto">
+            <div class="ms-auto d-flex gap-2">
+              <button type="button" id="nh-reset" class="btn btn-outline-secondary">Reset filtrů</button>
               <div class="btn-group" role="group" aria-label="Stránkování">
                 <button class="btn btn-outline-secondary" id="nh-prev">&laquo; Předchozí</button>
                 <button class="btn btn-outline-secondary" id="nh-next">Další &raquo;</button>
@@ -101,10 +118,12 @@
             <table class="table table-sm table-striped" id="nh-table">
               <thead>
                 <tr>
-                  <th scope="col">ID</th>
-                  <th scope="col">Kód</th>
-                  <th scope="col">Název</th>
-                  <th scope="col">Kategorie</th>
+                  <th scope="col" data-col="id" class="sortable">ID</th>
+                  <th scope="col" data-col="cislo" class="sortable">Kód</th>
+                  <th scope="col" data-col="nazev" class="sortable">Název</th>
+                  <th scope="col" data-col="kategorie_id" class="sortable">Kategorie</th>
+                  <th scope="col" data-col="dtod" class="sortable">Platnost od</th>
+                  <th scope="col" data-col="dtdo" class="sortable">Platnost do</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -186,6 +205,18 @@
               <input type="text" class="form-control" id="pol-search" placeholder="Zadejte část názvu nebo čísla…">
             </div>
             <div>
+              <label class="form-label mb-1 d-block" for="pol-filter-olej">Filtrovat olej</label>
+              <select id="pol-filter-olej" class="form-select">
+                <option value="">Vše</option>
+                <option value="1">Jen olejové</option>
+                <option value="0">Bez oleje</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label mb-1 d-block" for="pol-filter-platnost">Platnost k datu</label>
+              <input type="date" class="form-control" id="pol-filter-platnost" placeholder="YYYY-MM-DD">
+            </div>
+            <div>
               <label class="form-label mb-1 d-block">Záznamů na stránku</label>
               <select id="pol-limit" class="form-select">
                 <option>10</option>
@@ -194,7 +225,8 @@
                 <option>100</option>
               </select>
             </div>
-            <div class="ms-auto">
+            <div class="ms-auto d-flex gap-2">
+              <button type="button" id="pol-reset" class="btn btn-outline-secondary">Reset filtrů</button>
               <button id="pol-new" class="btn btn-success">Nový polotovar</button>
             </div>
           </div>
@@ -210,6 +242,8 @@
                   <th scope="col" data-col="okp" class="sortable">OKP</th>
                   <th scope="col" data-col="olej" class="sortable">Olej</th>
                   <th scope="col">Pozn.</th>
+                  <th scope="col" data-col="dtod" class="sortable">Platnost od</th>
+                  <th scope="col" data-col="dtdo" class="sortable">Platnost do</th>
                 </tr>
               </thead>
               <tbody></tbody>

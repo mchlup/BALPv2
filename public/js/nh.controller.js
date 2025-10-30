@@ -6,6 +6,9 @@
 
   const el = {
     search: $('#nh-search'),
+    codeFrom: $('#nh-code-from'),
+    codeTo: $('#nh-code-to'),
+    active: $('#nh-active'),
     limit:  $('#nh-limit'),
     table:  $('#nh-table tbody'),
     meta:   $('#nh-meta'),
@@ -14,7 +17,8 @@
     prev2:  $('#nh-prev-bottom'),
     next2:  $('#nh-next-bottom'),
     tabBtn: $('#tab-nh'),
-    pane:   $('#pane-nh')
+    pane:   $('#pane-nh'),
+    reset:  $('#nh-reset')
   };
   if (!el.pane) return; // stránka NH není přítomná
 
@@ -47,10 +51,15 @@
 
   const state = {
     q: '',
+    codeFrom: '',
+    codeTo: '',
+    active: '1',
     limit: 50,
     offset: 0,
     total: 0,
     loading: false,
+    sort_col: 'cislo',
+    sort_dir: 'ASC',
   };
 
   function setMeta(text) {
@@ -64,14 +73,19 @@
       const code = r.kod ?? r.code ?? r.cislo ?? r.CISLO ?? r.CODE ?? '';
       const name = r.nazev ?? r.name ?? r.NAZEV ?? r.NAME ?? '';
       const cat  = r.kategorie_id ?? r.category_id ?? r.kategorie ?? r.CAT ?? '';
+      const dtod = r.dtod ?? r.DTOD ?? '';
+      const dtdo = r.dtdo ?? r.DTDO ?? '';
       return `<tr data-id="${id!==null?String(id):''}" style="cursor:pointer">
         <td>${id!==null?String(id):''}</td>
         <td>${code!==null?String(code):''}</td>
         <td>${name!==null?String(name):''}</td>
         <td>${cat!==null?String(cat):''}</td>
+        <td>${dtod ? String(dtod).substring(0,10) : ''}</td>
+        <td>${dtdo ? String(dtdo).substring(0,10) : ''}</td>
       </tr>`;
     }).join('');
-    el.table.innerHTML = rows || `<tr><td colspan="4"><em>Žádné výsledky.</em></td></tr>`;
+    const colSpan = 6;
+    el.table.innerHTML = rows || `<tr><td colspan="${colSpan}"><em>Žádné výsledky.</em></td></tr>`;
   }
 
   async function load(force=false) {
@@ -82,8 +96,13 @@
       const params = new URLSearchParams({
         limit: String(state.limit),
         offset: String(state.offset),
+        sort_col: state.sort_col,
+        sort_dir: state.sort_dir,
       });
       if (state.q) params.set('q', state.q);
+      if (state.codeFrom) params.set('cislo_od', state.codeFrom);
+      if (state.codeTo) params.set('cislo_do', state.codeTo);
+      if (state.active !== '') params.set('active', state.active);
       const data = await apiFetch(`${nhEndpoint}?${params.toString()}`);
       state.total = data.total ?? 0;
       renderRows(Array.isArray(data.items) ? data.items : []);
@@ -120,6 +139,30 @@
       load();
     }, 300));
   }
+  if (el.codeFrom) {
+    state.codeFrom = el.codeFrom.value.trim();
+    el.codeFrom.addEventListener('input', debounce(() => {
+      state.codeFrom = el.codeFrom.value.trim();
+      state.offset = 0;
+      load();
+    }, 300));
+  }
+  if (el.codeTo) {
+    state.codeTo = el.codeTo.value.trim();
+    el.codeTo.addEventListener('input', debounce(() => {
+      state.codeTo = el.codeTo.value.trim();
+      state.offset = 0;
+      load();
+    }, 300));
+  }
+  if (el.active) {
+    state.active = el.active.value;
+    el.active.addEventListener('change', () => {
+      state.active = el.active.value;
+      state.offset = 0;
+      load();
+    });
+  }
   if (el.limit) {
     el.limit.addEventListener('change', () => {
       const v = parseInt(el.limit.value, 10);
@@ -131,6 +174,24 @@
     const v = parseInt(el.limit.value, 10);
     state.limit = isNaN(v) ? 50 : v;
   }
+  if (el.reset) {
+    el.reset.addEventListener('click', () => {
+      state.q = '';
+      state.codeFrom = '';
+      state.codeTo = '';
+      state.active = '1';
+      state.limit = 50;
+      state.offset = 0;
+      state.sort_col = 'cislo';
+      state.sort_dir = 'ASC';
+      if (el.search) el.search.value = '';
+      if (el.codeFrom) el.codeFrom.value = '';
+      if (el.codeTo) el.codeTo.value = '';
+      if (el.active) el.active.value = '1';
+      if (el.limit) el.limit.value = '50';
+      load(true);
+    });
+  }
   [el.prev, el.prev2].forEach(b => b && b.addEventListener('click', () => {
     state.offset = Math.max(0, state.offset - state.limit);
     load();
@@ -139,6 +200,24 @@
     if (state.offset + state.limit < state.total) state.offset += state.limit;
     load();
   }));
+
+  // Sorting by header click
+  const headerCells = document.querySelectorAll('#nh-table thead th.sortable');
+  headerCells.forEach(th => {
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', () => {
+      const col = th.getAttribute('data-col');
+      if (!col) return;
+      if (state.sort_col === col) {
+        state.sort_dir = state.sort_dir === 'ASC' ? 'DESC' : 'ASC';
+      } else {
+        state.sort_col = col;
+        state.sort_dir = 'ASC';
+      }
+      state.offset = 0;
+      load();
+    });
+  });
 
   // Načtení při prvním zobrazení záložky
   const onShown = (ev) => {
