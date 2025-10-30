@@ -58,7 +58,7 @@ function db() {
         respond_json(['error' => 'DB connect failed', 'detail' => $err], 500);
     }
     // Ensure utf8mb4
-    try { $pdo->exec("SET NAMES utf8mb4 COLLATE utf8mb4_czech_ci"); } catch (Throwable $e) {}
+    try { $pdo->exec("SET NAMES utf8mb4"); } catch (Throwable $e) {}
     return $pdo;
 }
 
