@@ -106,7 +106,8 @@
                 <option>100</option>
               </select>
             </div>
-            <div class="ms-auto d-flex gap-2">
+            <div class="ms-auto d-flex flex-wrap gap-2 justify-content-end">
+              <button type="button" id="nh-new" class="btn btn-success">Nová NH</button>
               <button type="button" id="nh-reset" class="btn btn-outline-secondary">Reset filtrů</button>
               <div class="btn-group" role="group" aria-label="Stránkování">
                 <button class="btn btn-outline-secondary" id="nh-prev">&laquo; Předchozí</button>
@@ -264,6 +265,64 @@
 
   <div class="text-end mt-3">
     <a href="./diag.html" class="link-secondary small">Diagnostika přihlášení</a>
+  </div>
+
+  <!-- Detail NH modal -->
+  <div class="modal fade" id="nhModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Detail Nátěrové hmoty</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zavřít"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-sm-2">
+              <label for="nh-id" class="form-label">ID</label>
+              <input type="text" class="form-control" id="nh-id" disabled>
+            </div>
+            <div class="col-sm-3">
+              <label for="nh-kod" class="form-label">Kód</label>
+              <input type="text" class="form-control" id="nh-kod" disabled>
+            </div>
+            <div class="col-sm-7">
+              <label for="nh-nazev" class="form-label">Název</label>
+              <input type="text" class="form-control" id="nh-nazev" disabled>
+            </div>
+            <div class="col-sm-3">
+              <label for="nh-kategorie_id" class="form-label">Kategorie</label>
+              <input type="number" class="form-control" id="nh-kategorie_id" disabled>
+            </div>
+            <div class="col-sm-3">
+              <label for="nh-dtod" class="form-label">Platnost od</label>
+              <input type="date" class="form-control" id="nh-dtod" disabled>
+            </div>
+            <div class="col-sm-3">
+              <label for="nh-dtdo" class="form-label">Platnost do</label>
+              <input type="date" class="form-control" id="nh-dtdo" disabled>
+            </div>
+            <div class="col-12">
+              <label for="nh-poznamka" class="form-label">Poznámka</label>
+              <textarea id="nh-poznamka" class="form-control" rows="3" disabled></textarea>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <h6 class="mb-2 text-uppercase text-muted small">Varianty / ODS</h6>
+            <div id="nh-ods-container" class="d-flex flex-column gap-3"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="me-auto small text-muted" id="nh-detail-meta"></div>
+          <div class="btn-group me-2">
+            <button type="button" class="btn btn-outline-primary" id="btn-nh-edit">Upravit</button>
+            <button type="button" class="btn btn-success d-none" id="btn-nh-save">Uložit</button>
+            <button type="button" class="btn btn-outline-danger" id="btn-nh-delete">Smazat</button>
+          </div>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zavřít</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Row action modal (polotovary) -->
