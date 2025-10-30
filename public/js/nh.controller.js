@@ -71,7 +71,7 @@
       // robustně přečteme potenciální názvy sloupců
       const id   = r.id ?? r.ID ?? r.Id ?? '';
       const code = r.kod ?? r.code ?? r.cislo ?? r.CISLO ?? r.CODE ?? '';
-      const vp   = r.cislo_vp ?? r.cisloVP ?? r.vp ?? r.vp_cislo ?? '';
+      const vt   = r.cislo_vt ?? r.cislo_vp ?? r.cisloVP ?? r.vp ?? r.vp_cislo ?? '';
       const name = r.nazev ?? r.name ?? r.NAZEV ?? r.NAME ?? '';
       const cat  = r.kategorie_id ?? r.category_id ?? r.kategorie ?? r.CAT ?? '';
       const dtod = r.dtod ?? r.DTOD ?? '';
@@ -79,7 +79,7 @@
       return `<tr data-id="${id!==null?String(id):''}" style="cursor:pointer">
         <td>${id!==null?String(id):''}</td>
         <td>${code!==null?String(code):''}</td>
-        <td>${vp!==null?String(vp):''}</td>
+        <td>${vt!==null?String(vt):''}</td>
         <td>${name!==null?String(name):''}</td>
         <td>${cat!==null?String(cat):''}</td>
         <td>${dtod ? String(dtod).substring(0,10) : ''}</td>
@@ -261,7 +261,7 @@
   const f = {
     id: document.getElementById('nh-id'),
     kod: document.getElementById('nh-kod'),
-    cislo_vp: document.getElementById('nh-cislo_vp'),
+    cislo_vt: document.getElementById('nh-cislo_vt'),
     nazev: document.getElementById('nh-nazev'),
     kategorie_id: document.getElementById('nh-kategorie_id'),
     pozn: document.getElementById('nh-poznamka'),
@@ -692,7 +692,7 @@
     const set = (k, v) => { if (f[k]) f[k].value = (v ?? ''); };
     set('id', row.id ?? '');
     set('kod', row.kod ?? row.code ?? row.cislo ?? '');
-    set('cislo_vp', row.cislo_vp ?? row.cisloVP ?? row.vp ?? row.vp_cislo ?? '');
+    set('cislo_vt', row.cislo_vt ?? row.cislo_vp ?? row.cisloVP ?? row.vp ?? row.vp_cislo ?? '');
     set('nazev', row.nazev ?? row.name ?? '');
     set('kategorie_id', row.kategorie_id ?? row.kategorie ?? '');
     set('pozn', row.pozn ?? '');
@@ -709,7 +709,7 @@
       kod: read('kod'),
       nazev: read('nazev'),
       kategorie_id: read('kategorie_id'),
-      cislo_vp: read('cislo_vp'),
+      cislo_vt: read('cislo_vt'),
       pozn: read('pozn'),
       dtod: read('dtod'),
       dtdo: read('dtdo'),
@@ -756,7 +756,7 @@
     fillForm({
       id: '',
       kod: '',
-      cislo_vp: '',
+      cislo_vt: '',
       nazev: '',
       pozn: '',
       dtod: formatDate(today),
