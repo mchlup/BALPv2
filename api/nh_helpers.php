@@ -138,6 +138,10 @@ if (!function_exists('balp_nh_vp_expression')) {
             $alias = 'nh';
         }
 
+        if (balp_nh_has_column($pdo, 'cislo_vt')) {
+            return $alias . '.' . sql_quote_ident('cislo_vt');
+        }
+
         if (balp_nh_has_column($pdo, 'cislo_vp')) {
             return $alias . '.' . sql_quote_ident('cislo_vp');
         }
@@ -153,7 +157,7 @@ if (!function_exists('balp_nh_vp_expression')) {
                 }
             }
             $vpColumn = null;
-            foreach (['cislo_vp', 'cislo_vyr', 'cislo'] as $candidate) {
+            foreach (['cislo_vt', 'cislo_vp', 'cislo_vyr', 'cislo'] as $candidate) {
                 if (isset($columns[strtolower($candidate)])) {
                     $vpColumn = $candidate;
                     break;
@@ -210,7 +214,9 @@ if (!function_exists('balp_ensure_nh_table')) {
         $tableQuoted = sql_quote_ident($table);
 
         if (balp_nh_table_exists($pdo, $table)) {
-            balp_ensure_nh_column($pdo, 'cislo_vp', '`cislo_vp` varchar(64) DEFAULT NULL AFTER `cislo`');
+            if (!balp_nh_has_column($pdo, 'cislo_vt') && !balp_nh_has_column($pdo, 'cislo_vp')) {
+                balp_ensure_nh_column($pdo, 'cislo_vt', '`cislo_vt` varchar(7) DEFAULT NULL AFTER `cislo`');
+            }
             return;
         }
 
@@ -237,7 +243,7 @@ if (!function_exists('balp_ensure_nh_table')) {
             'CREATE TABLE %s (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `cislo` varchar(32) NOT NULL,
-  `cislo_vp` varchar(64) DEFAULT NULL,
+  `cislo_vt` varchar(7) DEFAULT NULL,
   `nazev` varchar(255) NOT NULL,
   `pozn` text NULL,
   `dtod` datetime NOT NULL DEFAULT \'' . "1970-01-01 00:00:00" . '\',
