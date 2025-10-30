@@ -76,29 +76,29 @@
 
         <!-- NH – Nátěrové Hmoty -->
         <div class="tab-pane fade" id="pane-nh" role="tabpanel" aria-labelledby="tab-nh">
-          <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
-            <div class="flex-grow-1">
-              <label for="nh-search" class="form-label mb-1">Vyhledat položku NH</label>
+          <div class="filter-toolbar row g-2 align-items-end mb-3">
+            <div class="col-12 col-lg-4">
+              <label for="nh-search" class="form-label">Vyhledat položku NH</label>
               <input type="text" class="form-control" id="nh-search" placeholder="Zadejte část názvu nebo kódu…">
             </div>
-            <div>
-              <label class="form-label mb-1 d-block" for="nh-code-from">Číslo od</label>
+            <div class="col-6 col-md-3 col-xl-2">
+              <label class="form-label" for="nh-code-from">Číslo od</label>
               <input type="text" class="form-control" id="nh-code-from" placeholder="Např. 1000">
             </div>
-            <div>
-              <label class="form-label mb-1 d-block" for="nh-code-to">Číslo do</label>
+            <div class="col-6 col-md-3 col-xl-2">
+              <label class="form-label" for="nh-code-to">Číslo do</label>
               <input type="text" class="form-control" id="nh-code-to" placeholder="Např. 1999">
             </div>
-            <div>
-              <label class="form-label mb-1 d-block" for="nh-active">Platnost</label>
+            <div class="col-6 col-md-3 col-xl-2">
+              <label class="form-label" for="nh-active">Platnost</label>
               <select id="nh-active" class="form-select">
                 <option value="1" selected>Jen platné</option>
                 <option value="">Vše</option>
                 <option value="0">Jen neplatné</option>
               </select>
             </div>
-            <div>
-              <label class="form-label mb-1 d-block">Záznamů na stránku</label>
+            <div class="col-6 col-md-3 col-xl-2">
+              <label class="form-label" for="nh-limit">Záznamů na stránku</label>
               <select id="nh-limit" class="form-select">
                 <option>10</option>
                 <option>25</option>
@@ -106,12 +106,10 @@
                 <option>100</option>
               </select>
             </div>
-            <div class="ms-auto d-flex flex-wrap gap-2 justify-content-end">
-              <button type="button" id="nh-new" class="btn btn-success">Nová NH</button>
-              <button type="button" id="nh-reset" class="btn btn-outline-secondary">Reset filtrů</button>
-              <div class="btn-group" role="group" aria-label="Stránkování">
-                <button class="btn btn-outline-secondary" id="nh-prev">&laquo; Předchozí</button>
-                <button class="btn btn-outline-secondary" id="nh-next">Další &raquo;</button>
+            <div class="col-12 col-lg-auto ms-lg-auto">
+              <div class="toolbar-actions">
+                <button type="button" id="nh-reset" class="btn btn-outline-secondary">Reset filtrů</button>
+                <button type="button" id="nh-new" class="btn btn-success">Nová NH</button>
               </div>
             </div>
           </div>
@@ -140,25 +138,25 @@
         </div>
 
         <div class="tab-pane fade show active" id="pane-suroviny" role="tabpanel">
-          <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
-            <div class="flex-grow-1">
-              <label for="sur-search" class="form-label mb-1">Vyhledat surovinu</label>
+          <div class="filter-toolbar row g-2 align-items-end mb-3">
+            <div class="col-12 col-lg-4">
+              <label for="sur-search" class="form-label">Vyhledat surovinu</label>
               <input type="text" class="form-control" id="sur-search" placeholder="Zadejte část názvu nebo čísla…">
             </div>
-            <div>
-              <label class="form-label mb-1 d-block">Filtrovat olej</label>
+            <div class="col-6 col-md-4 col-xl-2">
+              <label class="form-label" for="sur-filter-olej">Filtrovat olej</label>
               <select id="sur-filter-olej" class="form-select">
                 <option value="">Vše</option>
                 <option value="1">Jen olejové</option>
                 <option value="0">Bez oleje</option>
               </select>
             </div>
-            <div>
-              <label class="form-label mb-1 d-block" for="sur-filter-platnost">Platnost k datu</label>
+            <div class="col-6 col-md-4 col-xl-2">
+              <label class="form-label" for="sur-filter-platnost">Platnost k datu</label>
               <input type="date" class="form-control" id="sur-filter-platnost" placeholder="YYYY-MM-DD">
             </div>
-            <div>
-              <label class="form-label mb-1 d-block">Záznamů na stránku</label>
+            <div class="col-6 col-md-4 col-xl-2">
+              <label class="form-label" for="sur-limit">Záznamů na stránku</label>
               <select id="sur-limit" class="form-select">
                 <option>10</option>
                 <option>25</option>
@@ -166,10 +164,12 @@
                 <option>100</option>
               </select>
             </div>
-            <div class="ms-auto d-flex gap-2">
-              <button type="button" id="sur-reset" class="btn btn-outline-secondary">Reset filtrů</button>
-              <button type="button" id="sur-export" class="btn btn-outline-secondary">Export CSV</button>
-              <button type="button" id="sur-new" class="btn btn-success">Nová surovina</button>
+            <div class="col-12 col-lg-auto ms-lg-auto">
+              <div class="toolbar-actions">
+                <button type="button" id="sur-reset" class="btn btn-outline-secondary">Reset filtrů</button>
+                <button type="button" id="sur-export" class="btn btn-outline-secondary">Export CSV</button>
+                <button type="button" id="sur-new" class="btn btn-success">Nová surovina</button>
+              </div>
             </div>
           </div>
 
@@ -200,25 +200,25 @@
         </div>
       
         <div class="tab-pane fade" id="pane-pol" role="tabpanel">
-          <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
-            <div class="flex-grow-1">
-              <label for="pol-search" class="form-label mb-1">Vyhledat polotovar</label>
+          <div class="filter-toolbar row g-2 align-items-end mb-3">
+            <div class="col-12 col-lg-4">
+              <label for="pol-search" class="form-label">Vyhledat polotovar</label>
               <input type="text" class="form-control" id="pol-search" placeholder="Zadejte část názvu nebo čísla…">
             </div>
-            <div>
-              <label class="form-label mb-1 d-block" for="pol-filter-olej">Filtrovat olej</label>
+            <div class="col-6 col-md-4 col-xl-2">
+              <label class="form-label" for="pol-filter-olej">Filtrovat olej</label>
               <select id="pol-filter-olej" class="form-select">
                 <option value="">Vše</option>
                 <option value="1">Jen olejové</option>
                 <option value="0">Bez oleje</option>
               </select>
             </div>
-            <div>
-              <label class="form-label mb-1 d-block" for="pol-filter-platnost">Platnost k datu</label>
+            <div class="col-6 col-md-4 col-xl-2">
+              <label class="form-label" for="pol-filter-platnost">Platnost k datu</label>
               <input type="date" class="form-control" id="pol-filter-platnost" placeholder="YYYY-MM-DD">
             </div>
-            <div>
-              <label class="form-label mb-1 d-block">Záznamů na stránku</label>
+            <div class="col-6 col-md-4 col-xl-2">
+              <label class="form-label" for="pol-limit">Záznamů na stránku</label>
               <select id="pol-limit" class="form-select">
                 <option>10</option>
                 <option>25</option>
@@ -226,9 +226,11 @@
                 <option>100</option>
               </select>
             </div>
-            <div class="ms-auto d-flex gap-2">
-              <button type="button" id="pol-reset" class="btn btn-outline-secondary">Reset filtrů</button>
-              <button id="pol-new" class="btn btn-success">Nový polotovar</button>
+            <div class="col-12 col-lg-auto ms-lg-auto">
+              <div class="toolbar-actions">
+                <button type="button" id="pol-reset" class="btn btn-outline-secondary">Reset filtrů</button>
+                <button id="pol-new" class="btn btn-success">Nový polotovar</button>
+              </div>
             </div>
           </div>
 
