@@ -280,6 +280,8 @@
     addBtn: document.getElementById('nh-recipe-add'),
     tableBody: document.querySelector('#nh-recipe-table tbody'),
     emptyState: document.getElementById('nh-recipe-empty'),
+    codeList: document.getElementById('nh-recipe-code-suggestions'),
+    nameList: document.getElementById('nh-recipe-name-suggestions'),
   };
   let draftRecipe = [];
   let isCreating = false;
@@ -294,6 +296,7 @@
       if (btnDel) btnDel.classList.remove('d-none');
       draftRecipe = [];
       renderDraftRecipe();
+      clearRecipeSuggestions();
       updateRecipeEditorVisibility();
     });
   }
@@ -465,6 +468,112 @@
     other: 'Ostatní',
   };
 
+  const recipeSearchEndpoints = {
+    sur: '/api/search_sur.php',
+    pol: '/api/search_pol.php',
+  };
+
+  const recipeSuggestionState = {
+    lastType: '',
+    lastQuery: '',
+    items: [],
+  };
+
+  const clearRecipeSuggestions = () => {
+    recipeSuggestionState.lastType = '';
+    recipeSuggestionState.lastQuery = '';
+    recipeSuggestionState.items = [];
+    if (recipeEditor.codeList) recipeEditor.codeList.innerHTML = '';
+    if (recipeEditor.nameList) recipeEditor.nameList.innerHTML = '';
+  };
+
+  const populateRecipeSuggestions = (items) => {
+    if (recipeEditor.codeList) {
+      recipeEditor.codeList.innerHTML = '';
+      items.forEach((item) => {
+        const code = item?.cislo ?? item?.kod ?? item?.code ?? '';
+        if (!code) return;
+        const option = document.createElement('option');
+        option.value = String(code);
+        const name = item?.nazev ?? item?.name ?? '';
+        if (name) option.textContent = String(name);
+        recipeEditor.codeList.appendChild(option);
+      });
+    }
+    if (recipeEditor.nameList) {
+      recipeEditor.nameList.innerHTML = '';
+      items.forEach((item) => {
+        const name = item?.nazev ?? item?.name ?? '';
+        if (!name) return;
+        const option = document.createElement('option');
+        option.value = String(name);
+        const code = item?.cislo ?? item?.kod ?? item?.code ?? '';
+        if (code) option.textContent = String(code);
+        recipeEditor.nameList.appendChild(option);
+      });
+    }
+  };
+
+  const requestRecipeSuggestions = debounce(async (query) => {
+    if (!isCreating) return;
+    const type = recipeEditor.type?.value || 'sur';
+    if (type === 'other') {
+      clearRecipeSuggestions();
+      return;
+    }
+    if (!query || query.length < 2) {
+      clearRecipeSuggestions();
+      return;
+    }
+    const endpoint = recipeSearchEndpoints[type];
+    if (!endpoint) {
+      clearRecipeSuggestions();
+      return;
+    }
+    try {
+      const url = `${apiBase}${endpoint}?q=${encodeURIComponent(query)}&limit=20`;
+      const data = await apiFetch(url);
+      const items = Array.isArray(data?.items) ? data.items : [];
+      recipeSuggestionState.lastType = type;
+      recipeSuggestionState.lastQuery = query;
+      recipeSuggestionState.items = items;
+      populateRecipeSuggestions(items);
+    } catch (error) {
+      console.error('Recipe suggestions failed:', error);
+      clearRecipeSuggestions();
+    }
+  }, 250);
+
+  const applySuggestionFromCode = () => {
+    if (!recipeEditor.code || !recipeEditor.name) return;
+    if (!recipeSuggestionState.items.length) return;
+    if ((recipeEditor.type?.value || '') !== recipeSuggestionState.lastType) return;
+    const value = recipeEditor.code.value?.trim();
+    if (!value) return;
+    const item = recipeSuggestionState.items.find((it) => {
+      const code = it?.cislo ?? it?.kod ?? it?.code;
+      return code && String(code).toLowerCase() === value.toLowerCase();
+    });
+    if (!item) return;
+    const name = item?.nazev ?? item?.name;
+    if (name) recipeEditor.name.value = String(name);
+  };
+
+  const applySuggestionFromName = () => {
+    if (!recipeEditor.code || !recipeEditor.name) return;
+    if (!recipeSuggestionState.items.length) return;
+    if ((recipeEditor.type?.value || '') !== recipeSuggestionState.lastType) return;
+    const value = recipeEditor.name.value?.trim();
+    if (!value) return;
+    const item = recipeSuggestionState.items.find((it) => {
+      const name = it?.nazev ?? it?.name;
+      return name && String(name).toLowerCase() === value.toLowerCase();
+    });
+    if (!item) return;
+    const code = item?.cislo ?? item?.kod ?? item?.code;
+    if (code) recipeEditor.code.value = String(code);
+  };
+
   const updateRecipeEditorVisibility = () => {
     if (!recipeEditor.section) return;
     const shouldShow = isCreating;
@@ -521,7 +630,9 @@
       if (recipeEditor.code) recipeEditor.code.value = '';
       if (recipeEditor.name) recipeEditor.name.value = '';
       if (recipeEditor.amount) recipeEditor.amount.value = '';
+      clearRecipeSuggestions();
       renderDraftRecipe();
+      if (recipeEditor.code) recipeEditor.code.focus();
     });
   }
 
@@ -536,6 +647,35 @@
       draftRecipe.splice(index, 1);
       renderDraftRecipe();
     });
+  }
+
+  if (recipeEditor.type) {
+    recipeEditor.type.addEventListener('change', () => {
+      if (!isCreating) return;
+      clearRecipeSuggestions();
+      const followUpQuery = recipeEditor.code?.value?.trim() || recipeEditor.name?.value?.trim() || '';
+      if (followUpQuery.length >= 2) {
+        requestRecipeSuggestions(followUpQuery);
+      }
+    });
+  }
+
+  if (recipeEditor.code) {
+    recipeEditor.code.addEventListener('input', () => {
+      if (!isCreating) return;
+      requestRecipeSuggestions(recipeEditor.code.value?.trim() || '');
+    });
+    recipeEditor.code.addEventListener('change', applySuggestionFromCode);
+    recipeEditor.code.addEventListener('blur', applySuggestionFromCode);
+  }
+
+  if (recipeEditor.name) {
+    recipeEditor.name.addEventListener('input', () => {
+      if (!isCreating) return;
+      requestRecipeSuggestions(recipeEditor.name.value?.trim() || '');
+    });
+    recipeEditor.name.addEventListener('change', applySuggestionFromName);
+    recipeEditor.name.addEventListener('blur', applySuggestionFromName);
   }
 
   function setEditMode(on) {
@@ -622,6 +762,7 @@
     setEditMode(true);
     draftRecipe = [];
     renderDraftRecipe();
+    clearRecipeSuggestions();
     updateRecipeEditorVisibility();
     if (f.kod) {
       f.kod.focus();

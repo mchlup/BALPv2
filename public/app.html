@@ -329,11 +329,13 @@
                   </div>
                   <div class="col-sm-3">
                     <label for="nh-recipe-code" class="form-label">Kód</label>
-                    <input type="text" id="nh-recipe-code" class="form-control form-control-sm" placeholder="Např. 12345">
+                    <input type="text" id="nh-recipe-code" class="form-control form-control-sm" placeholder="Např. 12345" list="nh-recipe-code-suggestions">
+                    <datalist id="nh-recipe-code-suggestions"></datalist>
                   </div>
                   <div class="col-sm-4">
                     <label for="nh-recipe-name" class="form-label">Název</label>
-                    <input type="text" id="nh-recipe-name" class="form-control form-control-sm" placeholder="Název položky">
+                    <input type="text" id="nh-recipe-name" class="form-control form-control-sm" placeholder="Název položky" list="nh-recipe-name-suggestions">
+                    <datalist id="nh-recipe-name-suggestions"></datalist>
                   </div>
                   <div class="col-sm-2">
                     <label for="nh-recipe-amount" class="form-label">g / kg</label>
