@@ -62,16 +62,18 @@ function db() {
     return $pdo;
 }
 
-function balp_getallheaders() {
-    if (function_exists('getallheaders')) return getallheaders();
-    $headers = [];
-    foreach ($_SERVER as $name => $value) {
-        if (strpos($name, 'HTTP_') === 0) {
-            $key = str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))));
-            $headers[$key] = $value;
+if (!function_exists('balp_getallheaders')) {
+    function balp_getallheaders() {
+        if (function_exists('getallheaders')) return getallheaders();
+        $headers = [];
+        foreach ($_SERVER as $name => $value) {
+            if (strpos($name, 'HTTP_') === 0) {
+                $key = str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))));
+                $headers[$key] = $value;
+            }
         }
+        return $headers;
     }
-    return $headers;
 }
 
 function get_bearer_token() {
