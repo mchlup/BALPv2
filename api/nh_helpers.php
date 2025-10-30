@@ -67,21 +67,21 @@ if (!function_exists('balp_nh_table_name')) {
     }
 }
 
-if (!function_exists('balp_nh_get_columns')) {
-    function balp_nh_get_columns(PDO $pdo, bool $forceReload = false): array
+if (!function_exists('balp_table_get_columns')) {
+    function balp_table_get_columns(PDO $pdo, string $table, bool $forceReload = false): array
     {
-        static $cache = null;
+        static $cache = [];
+        $key = strtolower($table);
         if ($forceReload) {
-            $cache = null;
+            unset($cache[$key]);
         }
-        if ($cache !== null) {
-            return $cache;
+        if (isset($cache[$key])) {
+            return $cache[$key];
         }
 
         $columns = [];
         try {
-            $tableQuoted = sql_quote_ident(balp_nh_table_name());
-            $stmt = $pdo->query('SHOW COLUMNS FROM ' . $tableQuoted);
+            $stmt = $pdo->query('SHOW COLUMNS FROM ' . sql_quote_ident($table));
             if ($stmt) {
                 while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
                     if (!empty($row['Field'])) {
@@ -93,7 +93,15 @@ if (!function_exists('balp_nh_get_columns')) {
             $columns = [];
         }
 
-        return $cache = $columns;
+        $cache[$key] = $columns;
+        return $columns;
+    }
+}
+
+if (!function_exists('balp_nh_get_columns')) {
+    function balp_nh_get_columns(PDO $pdo, bool $forceReload = false): array
+    {
+        return balp_table_get_columns($pdo, balp_nh_table_name(), $forceReload);
     }
 }
 
@@ -120,6 +128,72 @@ if (!function_exists('balp_ensure_nh_column')) {
         } catch (Throwable $ignored) {
             // Pokud se sloupec nepodaří přidat, pokračujeme bez chyby.
         }
+    }
+}
+
+if (!function_exists('balp_nh_vp_expression')) {
+    function balp_nh_vp_expression(PDO $pdo, string $alias = 'nh'): string
+    {
+        if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $alias)) {
+            $alias = 'nh';
+        }
+
+        if (balp_nh_has_column($pdo, 'cislo_vp')) {
+            return $alias . '.' . sql_quote_ident('cislo_vp');
+        }
+
+        static $template = null;
+        if ($template === null) {
+            $columns = balp_table_get_columns($pdo, 'balp_nhods_vyr');
+            $idColumn = null;
+            foreach (['idnhods', 'id_nhods', 'idnh'] as $candidate) {
+                if (isset($columns[strtolower($candidate)])) {
+                    $idColumn = $candidate;
+                    break;
+                }
+            }
+            $vpColumn = null;
+            foreach (['cislo_vp', 'cislo_vyr', 'cislo'] as $candidate) {
+                if (isset($columns[strtolower($candidate)])) {
+                    $vpColumn = $candidate;
+                    break;
+                }
+            }
+
+            if ($idColumn && $vpColumn) {
+                $orderParts = [];
+                if (isset($columns['dtdo'])) {
+                    $dateTo = 'vyr.' . sql_quote_ident('dtdo');
+                    $orderParts[] = "CASE WHEN ($dateTo IS NULL OR $dateTo > NOW()) THEN 0 ELSE 1 END";
+                    $orderParts[] = "COALESCE($dateTo, '9999-12-31')";
+                }
+                if (isset($columns['dtod'])) {
+                    $dateFrom = 'vyr.' . sql_quote_ident('dtod');
+                    $orderParts[] = "COALESCE($dateFrom, '0000-01-01')";
+                }
+                if (isset($columns['id'])) {
+                    $orderParts[] = 'vyr.' . sql_quote_ident('id') . ' DESC';
+                }
+                $orderSql = $orderParts ? (' ORDER BY ' . implode(', ', $orderParts)) : '';
+
+                $template = sprintf(
+                    '(SELECT %1$s FROM %2$s AS vyr WHERE %3$s = {alias}.%4$s%5$s LIMIT 1)',
+                    'vyr.' . sql_quote_ident($vpColumn),
+                    sql_quote_ident('balp_nhods_vyr'),
+                    'vyr.' . sql_quote_ident($idColumn),
+                    sql_quote_ident('id'),
+                    $orderSql
+                );
+            } else {
+                $template = 'NULL';
+            }
+        }
+
+        if ($template === null) {
+            return 'NULL';
+        }
+
+        return str_replace('{alias}', $alias, $template);
     }
 }
 

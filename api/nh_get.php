@@ -23,15 +23,32 @@ try {
     $pdo = db();
     balp_ensure_nh_table($pdo);
     $nhTable = sql_quote_ident(balp_nh_table_name());
+    $nhAlias = 'nh';
+    $vpExpr = balp_nh_vp_expression($pdo, $nhAlias);
     $id = (int)($_GET['id'] ?? 0);
     if ($id <= 0) {
         respond_json(['error' => 'missing id'], 400);
     }
 
-    $hasCisloVp = balp_nh_has_column($pdo, 'cislo_vp');
-    $vpSelect = $hasCisloVp ? 'cislo_vp' : 'NULL AS cislo_vp';
+    $hasCisloVp = strtoupper($vpExpr) !== 'NULL';
+    $idCol = "$nhAlias." . sql_quote_ident('id');
+    $cisloCol = "$nhAlias." . sql_quote_ident('cislo');
+    $nazevCol = "$nhAlias." . sql_quote_ident('nazev');
+    $poznCol = "$nhAlias." . sql_quote_ident('pozn');
+    $dtodCol = "$nhAlias." . sql_quote_ident('dtod');
+    $dtdoCol = "$nhAlias." . sql_quote_ident('dtdo');
+    $vpSelect = $hasCisloVp
+        ? '(' . $vpExpr . ') AS ' . sql_quote_ident('cislo_vp')
+        : 'NULL AS ' . sql_quote_ident('cislo_vp');
 
-    $stmt = $pdo->prepare("SELECT id, cislo, $vpSelect, nazev, pozn, dtod, dtdo FROM $nhTable WHERE id = :id");
+    $stmt = $pdo->prepare('SELECT '
+        . "$idCol AS id, "
+        . "$cisloCol AS cislo, "
+        . "$vpSelect, "
+        . "$nazevCol AS nazev, "
+        . "$poznCol AS pozn, "
+        . "$dtodCol AS dtod, "
+        . "$dtdoCol AS dtdo FROM $nhTable AS $nhAlias WHERE $idCol = :id LIMIT 1");
     $stmt->execute([':id' => $id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$row) {
