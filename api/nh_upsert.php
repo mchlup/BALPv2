@@ -9,133 +9,121 @@ try {
     $config = cfg();
     $authConf = $config['auth'] ?? [];
     if (!($authConf['enabled'] ?? false)) {
-        http_response_code(403);
-        echo json_encode(['error' => 'Auth disabled'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
-        exit;
+        respond_json(['error' => 'Auth disabled'], 403);
     }
+
     $token = balp_get_bearer_token();
     if (!$token) {
-        http_response_code(401);
-        echo json_encode(['error' => 'missing token'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
-        exit;
-    }
-    jwt_decode($token, $authConf['jwt_secret'] ?? 'change', true);
-
-    $pdo = db();
-    $raw = file_get_contents('php://input');
-    $in = json_decode($raw, true);
-    if (!is_array($in)) {
-        $in = $_POST;
-    }
-    if (!is_array($in)) {
-        $in = [];
-    }
-    $id = isset($in['id']) ? (int)$in['id'] : 0;
-    $table = 'balp_nh';
-
-    $colsStmt = $pdo->prepare('SELECT COLUMN_NAME, DATA_TYPE, IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :t');
-    $colsStmt->execute([':t' => $table]);
-    $columns = [];
-    while ($r = $colsStmt->fetch(PDO::FETCH_ASSOC)) {
-        $columns[$r['COLUMN_NAME']] = [
-            'type' => strtolower((string)$r['DATA_TYPE']),
-            'nullable' => ($r['IS_NULLABLE'] === 'YES')
-        ];
+        respond_json(['error' => 'missing token'], 401);
     }
 
-    $sanitize = function ($val, $info) {
-        $type = $info['type'] ?? 'varchar';
-        $nullable = $info['nullable'] ?? true;
-        if ($val === null || $val === '') {
-            if ($nullable) return null;
-            switch ($type) {
-                case 'int':
-                case 'bigint':
-                case 'smallint':
-                case 'tinyint':
-                case 'mediumint':
-                case 'decimal':
-                case 'double':
-                case 'float':
-                case 'real':
-                case 'numeric':
-                    return 0;
-                default:
-                    return '';
-            }
+    $user = jwt_decode($token, $authConf['jwt_secret'] ?? 'change', true);
+    if (!$user) {
+        respond_json(['error' => 'invalid token'], 401);
+    }
+
+    $payload = request_json();
+    if (!$payload) {
+        $payload = $_POST ?? [];
+    }
+
+    $id = isset($payload['id']) ? (int)$payload['id'] : 0;
+
+    $normalizeCode = static function ($value) {
+        $value = trim((string)$value);
+        if ($value === '') {
+            return null;
         }
-        switch ($type) {
-            case 'int':
-            case 'bigint':
-            case 'smallint':
-            case 'tinyint':
-            case 'mediumint':
-                return (int)$val;
-            case 'decimal':
-            case 'double':
-            case 'float':
-            case 'real':
-            case 'numeric':
-                return is_numeric($val) ? (float)$val : 0;
-            default:
-                return (string)$val;
+        $upper = mb_strtoupper($value, 'UTF-8');
+        if (preg_match('/^-?\d+$/', $upper)) {
+            $isNegative = strpos($upper, '-') === 0;
+            $digits = ltrim($upper, '-');
+            $padded = str_pad($digits, 12, '0', STR_PAD_LEFT);
+            return $isNegative ? '-' . $padded : $padded;
         }
+        return $upper;
     };
 
-    $pdo->beginTransaction();
-    if ($id > 0) {
-        $setParts = [];
-        $params = [':id' => $id];
-        foreach ($in as $key => $value) {
-            if ($key === 'id' || !isset($columns[$key])) continue;
-            $sanitized = $sanitize($value, $columns[$key]);
-            $placeholder = ':' . $key;
-            $setParts[] = '`' . str_replace('`', '``', $key) . "` = $placeholder";
-            $params[$placeholder] = $sanitized;
-        }
-        if ($setParts) {
-            $sql = 'UPDATE `' . $table . '` SET ' . implode(',', $setParts) . ' WHERE id = :id';
-            $stmt = $pdo->prepare($sql);
-            foreach ($params as $p => $v) {
-                if ($p === ':id') {
-                    $stmt->bindValue($p, (int)$v, PDO::PARAM_INT);
-                } elseif ($v === null) {
-                    $stmt->bindValue($p, null, PDO::PARAM_NULL);
-                } else {
-                    $stmt->bindValue($p, $v);
-                }
-            }
-            $stmt->execute();
-        }
-    } else {
-        $cols = [];
-        $placeholders = [];
-        $params = [];
-        foreach ($in as $key => $value) {
-            if ($key === 'id' || !isset($columns[$key])) continue;
-            $sanitized = $sanitize($value, $columns[$key]);
-            $cols[] = '`' . str_replace('`', '``', $key) . '`';
-            $placeholder = ':' . $key;
-            $placeholders[] = $placeholder;
-            $params[$placeholder] = $sanitized;
-        }
-        if ($cols) {
-            $sql = 'INSERT INTO `' . $table . '` (' . implode(',', $cols) . ') VALUES (' . implode(',', $placeholders) . ')';
-            $stmt = $pdo->prepare($sql);
-            foreach ($params as $p => $v) {
-                if ($v === null) {
-                    $stmt->bindValue($p, null, PDO::PARAM_NULL);
-                } else {
-                    $stmt->bindValue($p, $v);
-                }
-            }
-            $stmt->execute();
-        } else {
-            throw new Exception('No data to insert');
-        }
+    $cislo = $normalizeCode($payload['kod'] ?? $payload['cislo'] ?? '');
+    $nazev = trim((string)($payload['nazev'] ?? $payload['name'] ?? ''));
+    $pozn  = trim((string)($payload['pozn'] ?? ''));
+
+    $dtod = trim((string)($payload['dtod'] ?? ''));
+    $dtdo = trim((string)($payload['dtdo'] ?? ''));
+
+    $today = (new DateTimeImmutable('now'))->format('Y-m-d');
+    if ($dtod === '') {
+        $dtod = $today;
     }
+    if ($dtdo === '') {
+        $dtdo = '9999-12-31';
+    }
+
+    if ($cislo === null || $cislo === '') {
+        respond_json(['error' => 'cislo (kod) is required'], 400);
+    }
+    if ($nazev === '') {
+        respond_json(['error' => 'nazev is required'], 400);
+    }
+
+    if ($dtod >= $dtdo) {
+        respond_json(['error' => 'Platnost do musí být větší než platnost od'], 400);
+    }
+
+    $pdo = db();
+    $pdo->beginTransaction();
+
+    $dupStmt = $pdo->prepare('SELECT id FROM balp_nh WHERE cislo = :cislo' . ($id > 0 ? ' AND id <> :id' : '') . ' LIMIT 1');
+    $dupStmt->bindValue(':cislo', $cislo);
+    if ($id > 0) {
+        $dupStmt->bindValue(':id', $id, PDO::PARAM_INT);
+    }
+    $dupStmt->execute();
+    if ($dupStmt->fetchColumn()) {
+        respond_json(['error' => 'Zadané číslo NH už existuje'], 409);
+    }
+
+    $poznValue = ($pozn === '') ? null : $pozn;
+
+    if ($id > 0) {
+        $checkStmt = $pdo->prepare('SELECT id FROM balp_nh WHERE id = :id');
+        $checkStmt->execute([':id' => $id]);
+        if (!$checkStmt->fetchColumn()) {
+            respond_json(['error' => 'not found'], 404);
+        }
+
+        $sql = 'UPDATE balp_nh SET cislo = :cislo, nazev = :nazev, pozn = :pozn, dtod = :dtod, dtdo = :dtdo WHERE id = :id';
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->bindValue(':cislo', $cislo);
+        $stmt->bindValue(':nazev', $nazev);
+        if ($poznValue === null) {
+            $stmt->bindValue(':pozn', null, PDO::PARAM_NULL);
+        } else {
+            $stmt->bindValue(':pozn', $poznValue);
+        }
+        $stmt->bindValue(':dtod', $dtod);
+        $stmt->bindValue(':dtdo', $dtdo);
+        $stmt->execute();
+    } else {
+        $sql = 'INSERT INTO balp_nh (cislo, nazev, pozn, dtod, dtdo) VALUES (:cislo, :nazev, :pozn, :dtod, :dtdo)';
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindValue(':cislo', $cislo);
+        $stmt->bindValue(':nazev', $nazev);
+        if ($poznValue === null) {
+            $stmt->bindValue(':pozn', null, PDO::PARAM_NULL);
+        } else {
+            $stmt->bindValue(':pozn', $poznValue);
+        }
+        $stmt->bindValue(':dtod', $dtod);
+        $stmt->bindValue(':dtdo', $dtdo);
+        $stmt->execute();
+        $id = (int)$pdo->lastInsertId();
+    }
+
     $pdo->commit();
-    echo json_encode(new stdClass());
+
+    echo json_encode(['id' => $id], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
 } catch (Throwable $e) {
     if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
         $pdo->rollBack();
