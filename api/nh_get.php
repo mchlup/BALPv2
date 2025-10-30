@@ -28,11 +28,18 @@ try {
         respond_json(['error' => 'missing id'], 400);
     }
 
-    $stmt = $pdo->prepare("SELECT id, cislo, nazev, pozn, dtod, dtdo FROM $nhTable WHERE id = :id");
+    $hasCisloVp = balp_nh_has_column($pdo, 'cislo_vp');
+    $vpSelect = $hasCisloVp ? 'cislo_vp' : 'NULL AS cislo_vp';
+
+    $stmt = $pdo->prepare("SELECT id, cislo, $vpSelect, nazev, pozn, dtod, dtdo FROM $nhTable WHERE id = :id");
     $stmt->execute([':id' => $id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$row) {
         respond_json(['error' => 'not found'], 404);
+    }
+
+    if (!array_key_exists('cislo_vp', $row)) {
+        $row['cislo_vp'] = null;
     }
 
     $row['kod'] = $row['cislo'];

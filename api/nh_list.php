@@ -29,7 +29,13 @@ try {
     $search = trim((string)($_GET['q'] ?? ''));
     $sortCol = strtolower((string)($_GET['sort_col'] ?? 'cislo'));
     $sortDir = strtoupper((string)($_GET['sort_dir'] ?? 'ASC')) === 'DESC' ? 'DESC' : 'ASC';
+
+    $hasCisloVp = balp_nh_has_column($pdo, 'cislo_vp');
+
     $allowedSort = ['id','cislo','nazev','pozn','dtod','dtdo','kategorie_id'];
+    if ($hasCisloVp) {
+        $allowedSort[] = 'cislo_vp';
+    }
     if (!in_array($sortCol, $allowedSort, true)) {
         $sortCol = 'cislo';
     }
@@ -61,7 +67,11 @@ try {
 
     if ($search !== '') {
         $params[':search'] = '%' . $search . '%';
-        $where[] = '(cislo LIKE :search OR nazev LIKE :search OR pozn LIKE :search)';
+        $searchParts = ['cislo LIKE :search', 'nazev LIKE :search', 'pozn LIKE :search'];
+        if ($hasCisloVp) {
+            $searchParts[] = 'cislo_vp LIKE :search';
+        }
+        $where[] = '(' . implode(' OR ', $searchParts) . ')';
     }
 
     if ($codeFrom !== null) {
@@ -93,7 +103,8 @@ try {
     $countStmt->execute();
     $total = (int)$countStmt->fetchColumn();
 
-    $sql = "SELECT id, cislo, nazev, pozn, dtod, dtdo, NULL AS kategorie_id FROM $nhTable $whereSql ORDER BY $sortCol $sortDir LIMIT :limit OFFSET :offset";
+    $vpSelect = $hasCisloVp ? 'cislo_vp' : 'NULL AS cislo_vp';
+    $sql = "SELECT id, cislo, $vpSelect, nazev, pozn, dtod, dtdo, NULL AS kategorie_id FROM $nhTable $whereSql ORDER BY $sortCol $sortDir LIMIT :limit OFFSET :offset";
     $stmt = $pdo->prepare($sql);
     foreach ($params as $k => $v) {
         $stmt->bindValue($k, $v);
@@ -106,6 +117,9 @@ try {
     foreach ($rows as &$row) {
         $row['kod'] = $row['cislo'];
         $row['name'] = $row['nazev'];
+        if (!array_key_exists('cislo_vp', $row)) {
+            $row['cislo_vp'] = null;
+        }
     }
     unset($row);
 

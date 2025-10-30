@@ -46,6 +46,8 @@ try {
     };
 
     $cislo = $normalizeCode($payload['kod'] ?? $payload['cislo'] ?? '');
+    $cisloVpRaw = trim((string)($payload['cislo_vp'] ?? $payload['vp'] ?? $payload['vp_cislo'] ?? ''));
+    $cisloVp = ($cisloVpRaw === '') ? null : $cisloVpRaw;
     $nazev = trim((string)($payload['nazev'] ?? $payload['name'] ?? ''));
     $pozn  = trim((string)($payload['pozn'] ?? ''));
 
@@ -74,6 +76,7 @@ try {
     $pdo = db();
     balp_ensure_nh_table($pdo);
     $nhTable = sql_quote_ident(balp_nh_table_name());
+    $hasCisloVp = balp_nh_has_column($pdo, 'cislo_vp');
     $pdo->beginTransaction();
 
     $dupStmt = $pdo->prepare("SELECT id FROM $nhTable WHERE cislo = :cislo" . ($id > 0 ? ' AND id <> :id' : '') . ' LIMIT 1');
@@ -95,7 +98,11 @@ try {
             respond_json(['error' => 'not found'], 404);
         }
 
-        $sql = "UPDATE $nhTable SET cislo = :cislo, nazev = :nazev, pozn = :pozn, dtod = :dtod, dtdo = :dtdo WHERE id = :id";
+        $sql = "UPDATE $nhTable SET cislo = :cislo, nazev = :nazev, pozn = :pozn, dtod = :dtod, dtdo = :dtdo";
+        if ($hasCisloVp) {
+            $sql .= ", cislo_vp = :cislo_vp";
+        }
+        $sql .= " WHERE id = :id";
         $stmt = $pdo->prepare($sql);
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         $stmt->bindValue(':cislo', $cislo);
@@ -107,11 +114,29 @@ try {
         }
         $stmt->bindValue(':dtod', $dtod);
         $stmt->bindValue(':dtdo', $dtdo);
+        if ($hasCisloVp) {
+            if ($cisloVp === null) {
+                $stmt->bindValue(':cislo_vp', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':cislo_vp', $cisloVp);
+            }
+        }
         $stmt->execute();
     } else {
-        $sql = "INSERT INTO $nhTable (cislo, nazev, pozn, dtod, dtdo) VALUES (:cislo, :nazev, :pozn, :dtod, :dtdo)";
+        if ($hasCisloVp) {
+            $sql = "INSERT INTO $nhTable (cislo, cislo_vp, nazev, pozn, dtod, dtdo) VALUES (:cislo, :cislo_vp, :nazev, :pozn, :dtod, :dtdo)";
+        } else {
+            $sql = "INSERT INTO $nhTable (cislo, nazev, pozn, dtod, dtdo) VALUES (:cislo, :nazev, :pozn, :dtod, :dtdo)";
+        }
         $stmt = $pdo->prepare($sql);
         $stmt->bindValue(':cislo', $cislo);
+        if ($hasCisloVp) {
+            if ($cisloVp === null) {
+                $stmt->bindValue(':cislo_vp', null, PDO::PARAM_NULL);
+            } else {
+                $stmt->bindValue(':cislo_vp', $cisloVp);
+            }
+        }
         $stmt->bindValue(':nazev', $nazev);
         if ($poznValue === null) {
             $stmt->bindValue(':pozn', null, PDO::PARAM_NULL);
