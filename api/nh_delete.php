@@ -2,6 +2,7 @@
 require_once __DIR__ . '/auth_helpers.php';
 require_once __DIR__ . '/jwt_helper.php';
 require_once __DIR__ . '/../helpers.php';
+require_once __DIR__ . '/nh_helpers.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -20,12 +21,15 @@ try {
     jwt_decode($token, $authConf['jwt_secret'] ?? 'change', true);
 
     $pdo = db();
+    balp_ensure_nh_table($pdo);
+    $nhTableName = balp_nh_table_name();
+    $nhTable = sql_quote_ident($nhTableName);
     $id = (int)($_GET['id'] ?? 0);
     if ($id <= 0) {
         respond_json(['error' => 'missing id'], 400);
     }
 
-    $check = $pdo->prepare('SELECT id FROM balp_nh WHERE id = :id');
+    $check = $pdo->prepare("SELECT id FROM $nhTable WHERE id = :id");
     $check->execute([':id' => $id]);
     if (!$check->fetchColumn()) {
         respond_json(['error' => 'not found'], 404);
@@ -35,14 +39,15 @@ try {
 
     $pdo->beginTransaction();
 
+    $nhodsTable = sql_quote_ident('balp_nhods');
     $tables = [
-        'balp_nh' => 'id = :id',
-        'balp_nhods' => 'idnh = :id',
-        'balp_nhods_ceny' => 'idnhods IN (SELECT id FROM balp_nhods WHERE idnh = :id)',
-        'balp_nhods_rec' => 'idnhods IN (SELECT id FROM balp_nhods WHERE idnh = :id)',
-        'balp_nhods_vyr' => 'idnhods IN (SELECT id FROM balp_nhods WHERE idnh = :id)',
-        'balp_nhods_vyr_rec' => 'idnhods IN (SELECT id FROM balp_nhods WHERE idnh = :id)',
-        'balp_nhods_vyr_zk' => 'idnhods IN (SELECT id FROM balp_nhods WHERE idnh = :id)',
+        $nhTable => 'id = :id',
+        $nhodsTable => 'idnh = :id',
+        sql_quote_ident('balp_nhods_ceny') => "idnhods IN (SELECT id FROM $nhodsTable WHERE idnh = :id)",
+        sql_quote_ident('balp_nhods_rec') => "idnhods IN (SELECT id FROM $nhodsTable WHERE idnh = :id)",
+        sql_quote_ident('balp_nhods_vyr') => "idnhods IN (SELECT id FROM $nhodsTable WHERE idnh = :id)",
+        sql_quote_ident('balp_nhods_vyr_rec') => "idnhods IN (SELECT id FROM $nhodsTable WHERE idnh = :id)",
+        sql_quote_ident('balp_nhods_vyr_zk') => "idnhods IN (SELECT id FROM $nhodsTable WHERE idnh = :id)",
     ];
 
     foreach ($tables as $table => $condition) {

@@ -39,6 +39,10 @@ $CONFIG = [
     'jwt_secret'     => getenv('BALP_JWT_SECRET') ?: '6adb6bea2f350ed900b5d48791f56799',
     'jwt_ttl_minutes'=> 120,
   ],
+
+  'tables' => [
+    'nh' => 'balp_nh',
+  ],
 ];
 
 return $CONFIG;

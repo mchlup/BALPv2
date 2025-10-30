@@ -2,6 +2,7 @@
 require_once __DIR__ . '/auth_helpers.php';
 require_once __DIR__ . '/jwt_helper.php';
 require_once __DIR__ . '/../helpers.php';
+require_once __DIR__ . '/nh_helpers.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -71,9 +72,11 @@ try {
     }
 
     $pdo = db();
+    balp_ensure_nh_table($pdo);
+    $nhTable = sql_quote_ident(balp_nh_table_name());
     $pdo->beginTransaction();
 
-    $dupStmt = $pdo->prepare('SELECT id FROM balp_nh WHERE cislo = :cislo' . ($id > 0 ? ' AND id <> :id' : '') . ' LIMIT 1');
+    $dupStmt = $pdo->prepare("SELECT id FROM $nhTable WHERE cislo = :cislo" . ($id > 0 ? ' AND id <> :id' : '') . ' LIMIT 1');
     $dupStmt->bindValue(':cislo', $cislo);
     if ($id > 0) {
         $dupStmt->bindValue(':id', $id, PDO::PARAM_INT);
@@ -86,13 +89,13 @@ try {
     $poznValue = ($pozn === '') ? null : $pozn;
 
     if ($id > 0) {
-        $checkStmt = $pdo->prepare('SELECT id FROM balp_nh WHERE id = :id');
+        $checkStmt = $pdo->prepare("SELECT id FROM $nhTable WHERE id = :id");
         $checkStmt->execute([':id' => $id]);
         if (!$checkStmt->fetchColumn()) {
             respond_json(['error' => 'not found'], 404);
         }
 
-        $sql = 'UPDATE balp_nh SET cislo = :cislo, nazev = :nazev, pozn = :pozn, dtod = :dtod, dtdo = :dtdo WHERE id = :id';
+        $sql = "UPDATE $nhTable SET cislo = :cislo, nazev = :nazev, pozn = :pozn, dtod = :dtod, dtdo = :dtdo WHERE id = :id";
         $stmt = $pdo->prepare($sql);
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         $stmt->bindValue(':cislo', $cislo);
@@ -106,7 +109,7 @@ try {
         $stmt->bindValue(':dtdo', $dtdo);
         $stmt->execute();
     } else {
-        $sql = 'INSERT INTO balp_nh (cislo, nazev, pozn, dtod, dtdo) VALUES (:cislo, :nazev, :pozn, :dtod, :dtdo)';
+        $sql = "INSERT INTO $nhTable (cislo, nazev, pozn, dtod, dtdo) VALUES (:cislo, :nazev, :pozn, :dtod, :dtdo)";
         $stmt = $pdo->prepare($sql);
         $stmt->bindValue(':cislo', $cislo);
         $stmt->bindValue(':nazev', $nazev);

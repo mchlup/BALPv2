@@ -2,6 +2,7 @@
 require_once __DIR__ . '/auth_helpers.php';
 require_once __DIR__ . '/jwt_helper.php';
 require_once __DIR__ . '/../helpers.php';
+require_once __DIR__ . '/nh_helpers.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -20,6 +21,8 @@ try {
     jwt_decode($token, $authConf['jwt_secret'] ?? 'change', true);
 
     $pdo = db();
+    balp_ensure_nh_table($pdo);
+    $nhTable = sql_quote_ident(balp_nh_table_name());
 
     $limit = max(1, min(200, (int)($_GET['limit'] ?? 50)));
     $offset = max(0, (int)($_GET['offset'] ?? 0));
@@ -74,14 +77,14 @@ try {
 
     $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 
-    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM balp_nh $whereSql");
+    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM $nhTable $whereSql");
     foreach ($params as $k => $v) {
         $countStmt->bindValue($k, $v);
     }
     $countStmt->execute();
     $total = (int)$countStmt->fetchColumn();
 
-    $sql = "SELECT id, cislo, nazev, pozn, dtod, dtdo, NULL AS kategorie_id FROM balp_nh $whereSql ORDER BY cislo LIMIT :limit OFFSET :offset";
+    $sql = "SELECT id, cislo, nazev, pozn, dtod, dtdo, NULL AS kategorie_id FROM $nhTable $whereSql ORDER BY cislo LIMIT :limit OFFSET :offset";
     $stmt = $pdo->prepare($sql);
     foreach ($params as $k => $v) {
         $stmt->bindValue($k, $v);
