@@ -25,4 +25,7 @@ return [
         'jwt_secret' => 'change_me',
         'jwt_ttl_minutes' => 120,
     ],
+    'tables' => [
+        'nh' => 'balp_nh',
+    ],
 ];

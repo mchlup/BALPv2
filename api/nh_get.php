@@ -2,6 +2,7 @@
 require_once __DIR__ . '/auth_helpers.php';
 require_once __DIR__ . '/jwt_helper.php';
 require_once __DIR__ . '/../helpers.php';
+require_once __DIR__ . '/nh_helpers.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -20,12 +21,14 @@ try {
     jwt_decode($token, $authConf['jwt_secret'] ?? 'change', true);
 
     $pdo = db();
+    balp_ensure_nh_table($pdo);
+    $nhTable = sql_quote_ident(balp_nh_table_name());
     $id = (int)($_GET['id'] ?? 0);
     if ($id <= 0) {
         respond_json(['error' => 'missing id'], 400);
     }
 
-    $stmt = $pdo->prepare('SELECT id, cislo, nazev, pozn, dtod, dtdo FROM balp_nh WHERE id = :id');
+    $stmt = $pdo->prepare("SELECT id, cislo, nazev, pozn, dtod, dtdo FROM $nhTable WHERE id = :id");
     $stmt->execute([':id' => $id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$row) {
