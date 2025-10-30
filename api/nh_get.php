@@ -9,33 +9,33 @@ try {
     $config = cfg();
     $authConf = $config['auth'] ?? [];
     if (!($authConf['enabled'] ?? false)) {
-        http_response_code(403);
-        echo json_encode(['error' => 'Auth disabled'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
-        exit;
+        respond_json(['error' => 'Auth disabled'], 403);
     }
+
     $token = balp_get_bearer_token();
     if (!$token) {
-        http_response_code(401);
-        echo json_encode(['error' => 'missing token'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
-        exit;
+        respond_json(['error' => 'missing token'], 401);
     }
+
     jwt_decode($token, $authConf['jwt_secret'] ?? 'change', true);
 
     $pdo = db();
     $id = (int)($_GET['id'] ?? 0);
     if ($id <= 0) {
-        http_response_code(400);
-        echo json_encode(['error' => 'missing id'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
-        exit;
+        respond_json(['error' => 'missing id'], 400);
     }
-    $stmt = $pdo->prepare('SELECT id, kod, nazev, kategorie_id, pozn, dtod, dtdo FROM balp_nh WHERE id = :id AND dtod <= NOW() AND dtdo >= NOW()');
+
+    $stmt = $pdo->prepare('SELECT id, cislo, nazev, pozn, dtod, dtdo FROM balp_nh WHERE id = :id');
     $stmt->execute([':id' => $id]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$row) {
-        http_response_code(404);
-        echo json_encode(['error' => 'not found'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
-        exit;
+        respond_json(['error' => 'not found'], 404);
     }
+
+    $row['kod'] = $row['cislo'];
+    $row['name'] = $row['nazev'];
+    $row['kategorie_id'] = $row['kategorie_id'] ?? null;
+
     echo json_encode(['item' => $row], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
 } catch (Throwable $e) {
     http_response_code(500);

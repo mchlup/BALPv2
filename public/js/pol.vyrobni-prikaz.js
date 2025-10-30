@@ -15,6 +15,15 @@
     hdr.appendChild(btn);
   });
 
+  document.addEventListener('DOMContentLoaded', () => {
+    const usersBtn = document.getElementById('vp-users-link');
+    if (usersBtn) {
+      usersBtn.addEventListener('click', () => {
+        window.open('../admin_users.php', '_blank', 'noopener');
+      });
+    }
+  });
+
   async function onRecurseClick() {
     try {
       const kg    = Number(document.getElementById('vp-mnozstvi').value || 1);
