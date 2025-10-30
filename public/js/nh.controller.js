@@ -271,6 +271,17 @@
   const btnDel = document.getElementById('btn-nh-delete');
   const btnNew = document.getElementById('nh-new');
   const odsContainer = document.getElementById('nh-ods-container');
+  const recipeEditor = {
+    section: document.getElementById('nh-recipe-editor'),
+    type: document.getElementById('nh-recipe-type'),
+    code: document.getElementById('nh-recipe-code'),
+    name: document.getElementById('nh-recipe-name'),
+    amount: document.getElementById('nh-recipe-amount'),
+    addBtn: document.getElementById('nh-recipe-add'),
+    tableBody: document.querySelector('#nh-recipe-table tbody'),
+    emptyState: document.getElementById('nh-recipe-empty'),
+  };
+  let draftRecipe = [];
   let isCreating = false;
   if (btnEdit) btnEdit.addEventListener('click', () => setEditMode(true));
   if (btnSave) btnSave.addEventListener('click', () => saveDetail());
@@ -281,6 +292,9 @@
       isCreating = false;
       setEditMode(false);
       if (btnDel) btnDel.classList.remove('d-none');
+      draftRecipe = [];
+      renderDraftRecipe();
+      updateRecipeEditorVisibility();
     });
   }
 
@@ -320,6 +334,15 @@
       const validity = `${fmtDate(price.dtod) || '—'} – ${fmtDate(price.dtdo) || '—'}`;
       rows.push(`<div class="small text-muted">Platnost: ${escapeHtml(validity)}</div>`);
       return rows.join('');
+    };
+    const renderPriceSummaryCompact = (price) => {
+      if (!price) return '<span class="text-muted">—</span>';
+      const parts = [];
+      if (price.sur_nak !== undefined && price.sur_nak !== null) parts.push(`SuR nákup: <strong>${fmtNumber(price.sur_nak)}</strong>`);
+      if (price.mat_nak !== undefined && price.mat_nak !== null) parts.push(`Materiál nákup: <strong>${fmtNumber(price.mat_nak)}</strong>`);
+      if (price.vn_kg !== undefined && price.vn_kg !== null) parts.push(`VN / kg: <strong>${fmtNumber(price.vn_kg)}</strong>`);
+      if (price.uvn_kg !== undefined && price.uvn_kg !== null) parts.push(`ÚVN / kg: <strong>${fmtNumber(price.uvn_kg)}</strong>`);
+      return parts.length ? parts.join(' · ') : '<span class="text-muted">—</span>';
     };
     const renderPriceHistory = (prices) => {
       if (!Array.isArray(prices) || prices.length === 0) {
@@ -392,36 +415,135 @@
         </div>
       `;
     };
-    odsContainer.innerHTML = list.map((item) => {
+    const accordionId = 'nh-ods-accordion';
+    odsContainer.innerHTML = `<div class="accordion" id="${accordionId}">${list.map((item, index) => {
+      const collapseId = `${accordionId}-collapse-${index}`;
+      const headingId = `${accordionId}-heading-${index}`;
       const headerTitle = [item.cislo ? `<strong>${escapeHtml(item.cislo)}</strong>` : '', item.nazev ? escapeHtml(item.nazev) : '']
         .filter(Boolean)
         .join(' – ');
       const validity = `${fmtDate(item.dtod) || '—'} – ${fmtDate(item.dtdo) || '—'}`;
+      const note = item.pozn ? `<div class="small mt-2">${escapeHtml(item.pozn)}</div>` : '';
       return `
-        <div class="border rounded p-3 shadow-sm">
-          <div class="d-flex flex-wrap justify-content-between gap-3">
-            <div>
-              <div class="fw-semibold">${headerTitle || 'Bez názvu'}</div>
-              <div class="small text-muted">Platnost: ${escapeHtml(validity)}</div>
-              ${item.pozn ? `<div class="small mt-1">${escapeHtml(item.pozn)}</div>` : ''}
-            </div>
-            <div class="text-end small">
-              <div class="fw-semibold text-uppercase text-muted">Aktuální cena</div>
-              ${renderPriceSummary(item.active_price)}
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="${headingId}">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}">
+              <div class="w-100">
+                <div class="d-flex justify-content-between gap-2 flex-wrap">
+                  <span class="fw-semibold">${headerTitle || 'Bez názvu'}</span>
+                  <span class="small text-muted">Platnost: ${escapeHtml(validity)}</span>
+                </div>
+                <div class="small text-muted mt-1">${renderPriceSummaryCompact(item.active_price)}</div>
+              </div>
+            </button>
+          </h2>
+          <div id="${collapseId}" class="accordion-collapse collapse" aria-labelledby="${headingId}" data-bs-parent="#${accordionId}">
+            <div class="accordion-body">
+              <div class="d-flex flex-wrap justify-content-between gap-3 mb-3">
+                <div>
+                  <div class="fw-semibold">${headerTitle || 'Bez názvu'}</div>
+                  <div class="small text-muted">Platnost: ${escapeHtml(validity)}</div>
+                  ${note}
+                </div>
+                <div class="text-end small">
+                  <div class="fw-semibold text-uppercase text-muted">Aktuální cena</div>
+                  ${renderPriceSummary(item.active_price)}
+                </div>
+              </div>
+              ${renderPriceHistory(item.prices)}
+              ${renderRecipe(item.recipe)}
             </div>
           </div>
-          ${renderPriceHistory(item.prices)}
-          ${renderRecipe(item.recipe)}
         </div>
       `;
+    }).join('')}</div>`;
+  };
+
+  const recipeTypeLabels = {
+    sur: 'Surovina',
+    pol: 'Polotovar',
+    other: 'Ostatní',
+  };
+
+  const updateRecipeEditorVisibility = () => {
+    if (!recipeEditor.section) return;
+    const shouldShow = isCreating;
+    recipeEditor.section.classList.toggle('d-none', !shouldShow);
+  };
+
+  const renderDraftRecipe = () => {
+    if (!recipeEditor.tableBody || !recipeEditor.emptyState) return;
+    if (!Array.isArray(draftRecipe) || draftRecipe.length === 0) {
+      recipeEditor.tableBody.innerHTML = '';
+      recipeEditor.emptyState.classList.remove('d-none');
+      return;
+    }
+    recipeEditor.emptyState.classList.add('d-none');
+    recipeEditor.tableBody.innerHTML = draftRecipe.map((item, index) => {
+      const amount = Number(item.mnozstvi);
+      const formattedAmount = Number.isFinite(amount)
+        ? amount.toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        : '';
+      return `
+      <tr data-index="${index}">
+        <td>${recipeTypeLabels[item.typ] || ''}</td>
+        <td>${escapeHtml(item.kod ?? '')}</td>
+        <td>${escapeHtml(item.nazev ?? '')}</td>
+        <td class="text-end">${formattedAmount}</td>
+        <td class="text-end">
+          <button type="button" class="btn btn-sm btn-link text-danger" data-action="remove" title="Odebrat položku">
+            &times;
+          </button>
+        </td>
+      </tr>
+    `;
     }).join('');
   };
+
+  if (recipeEditor.addBtn) {
+    recipeEditor.addBtn.addEventListener('click', () => {
+      if (!isCreating) return;
+      const typ = recipeEditor.type?.value || 'sur';
+      const kod = recipeEditor.code?.value?.trim() || '';
+      const nazev = recipeEditor.name?.value?.trim() || '';
+      const amountRaw = recipeEditor.amount?.value ?? '';
+      const amount = Number(amountRaw);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        alert('Zadejte prosím množství v g/kg větší než 0.');
+        return;
+      }
+      draftRecipe.push({
+        typ,
+        kod,
+        nazev,
+        mnozstvi: amount,
+      });
+      if (recipeEditor.code) recipeEditor.code.value = '';
+      if (recipeEditor.name) recipeEditor.name.value = '';
+      if (recipeEditor.amount) recipeEditor.amount.value = '';
+      renderDraftRecipe();
+    });
+  }
+
+  if (recipeEditor.tableBody) {
+    recipeEditor.tableBody.addEventListener('click', (event) => {
+      const target = event.target.closest('[data-action="remove"]');
+      if (!target) return;
+      if (!isCreating) return;
+      const row = target.closest('tr');
+      const index = row ? parseInt(row.getAttribute('data-index'), 10) : NaN;
+      if (!Number.isInteger(index)) return;
+      draftRecipe.splice(index, 1);
+      renderDraftRecipe();
+    });
+  }
 
   function setEditMode(on) {
     Object.keys(f).filter(k => k !== 'id').forEach(k => { if (f[k]) f[k].disabled = !on; });
     if (btnEdit) btnEdit.classList.toggle('d-none', on || isCreating);
     if (btnSave) btnSave.classList.toggle('d-none', !on);
     if (btnDel) btnDel.classList.toggle('d-none', isCreating);
+    updateRecipeEditorVisibility();
   }
   function fillForm(row) {
     const set = (k, v) => { if (f[k]) f[k].value = (v ?? ''); };
@@ -447,6 +569,15 @@
       dtod: read('dtod'),
       dtdo: read('dtdo'),
     };
+    if (isCreating && Array.isArray(draftRecipe) && draftRecipe.length) {
+      payload.recipe_items = draftRecipe.map((item, index) => ({
+        typ: item.typ || null,
+        kod: item.kod || null,
+        nazev: item.nazev || null,
+        mnozstvi: Number(item.mnozstvi) || null,
+        techpor: index + 1,
+      }));
+    }
     const idVal = f.id?.value;
     if (idVal) payload.id = Number(idVal);
     return payload;
@@ -461,6 +592,9 @@
       if (detailMeta) detailMeta.textContent = `ID #${id}`;
       setEditMode(false);
       isCreating = false;
+      draftRecipe = [];
+      renderDraftRecipe();
+      updateRecipeEditorVisibility();
       modal.show();
     } catch (e) {
       console.error('Detail load failed:', e);
@@ -486,6 +620,9 @@
     if (detailMeta) detailMeta.textContent = 'Nová NH';
     isCreating = true;
     setEditMode(true);
+    draftRecipe = [];
+    renderDraftRecipe();
+    updateRecipeEditorVisibility();
     if (f.kod) {
       f.kod.focus();
       f.kod.select?.();
