@@ -5,6 +5,16 @@
   if (!window.API_URL) window.API_URL = '/balp2/api.php';
   const storageKey='balp_token';
   const getToken = ()=>{ try{return localStorage.getItem(storageKey)||'';}catch(e){return '';} };
+
+  const escapeHtml = (value) => {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
   const withAuth = (url) => {
     const t = getToken();
     const u = new URL(url, location.origin);
@@ -73,16 +83,16 @@
     modal = bootstrap.Modal.getOrCreateInstance(modalEl);
   }
   function renderBody(row) {
-    const esc = (s) => (s==null?'':String(s));
+    const cell = (value) => escapeHtml(value ?? '');
     return `
       <div class="row g-3">
-        <div class="col-md-3"><div class="form-text">ID</div><div class="fw-semibold">${esc(row.id)}</div></div>
-        <div class="col-md-3"><div class="form-text">Číslo</div><div class="fw-semibold">${esc(row.cislo)}</div></div>
-        <div class="col-md-6"><div class="form-text">Název</div><div class="fw-semibold">${esc(row.nazev)}</div></div>
-        <div class="col-md-2"><div class="form-text">SH</div><div>${esc(row.sh)}</div></div>
-        <div class="col-md-2"><div class="form-text">OKP</div><div>${esc(row.okp)}</div></div>
-        <div class="col-md-2"><div class="form-text">Olej</div><div>${esc(row.olej)}</div></div>
-        <div class="col-md-12"><div class="form-text">Poznámka</div><div>${esc(row.pozn)}</div></div>
+        <div class="col-md-3"><div class="form-text">ID</div><div class="fw-semibold">${cell(row.id)}</div></div>
+        <div class="col-md-3"><div class="form-text">Číslo</div><div class="fw-semibold">${cell(row.cislo)}</div></div>
+        <div class="col-md-6"><div class="form-text">Název</div><div class="fw-semibold">${cell(row.nazev)}</div></div>
+        <div class="col-md-2"><div class="form-text">SH</div><div>${cell(row.sh)}</div></div>
+        <div class="col-md-2"><div class="form-text">OKP</div><div>${cell(row.okp)}</div></div>
+        <div class="col-md-2"><div class="form-text">Olej</div><div>${cell(row.olej)}</div></div>
+        <div class="col-md-12"><div class="form-text">Poznámka</div><div>${cell(row.pozn)}</div></div>
       </div>`;
   }
   async function openRowModal(id){
@@ -96,7 +106,8 @@
       $('#polRowModalBody').innerHTML = renderBody(data);
       $('#polRowMeta').textContent = 'ID: ' + id;
     } catch (e) {
-      $('#polRowModalBody').innerHTML = `<div class="alert alert-danger">Chyba načtení: ${e}</div>`;
+      const msg = escapeHtml(e?.message || e);
+      $('#polRowModalBody').innerHTML = `<div class="alert alert-danger">Chyba načtení: ${msg}</div>`;
     }
   }
 
