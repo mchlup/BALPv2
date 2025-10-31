@@ -104,24 +104,21 @@
       const cat  = r.kategorie_id ?? r.category_id ?? r.kategorie ?? r.CAT ?? '';
       const dtod = r.dtod ?? r.DTOD ?? '';
       const dtdo = r.dtdo ?? r.DTDO ?? '';
-      const idCell = safeCell(id);
+      const idAttr = escapeHtml(String(id ?? ''));
       const codeCell = safeCell(code);
-      const vpCell = safeCell(vp);
       const nameCell = safeCell(name);
       const catCell = safeCell(cat);
       const dtodCell = safeDate(dtod);
       const dtdoCell = safeDate(dtdo);
-      return `<tr data-id="${idCell}" style="cursor:pointer">
-        <td>${idCell}</td>
+      return `<tr data-id="${idAttr}" style="cursor:pointer">
         <td>${codeCell}</td>
-        <td>${vpCell}</td>
         <td>${nameCell}</td>
         <td>${catCell}</td>
         <td>${dtodCell}</td>
         <td>${dtdoCell}</td>
       </tr>`;
     }).join('');
-    const colSpan = 7;
+    const colSpan = 5;
     tableBody.innerHTML = rows || `<tr><td colspan="${colSpan}"><em>Žádné výsledky.</em></td></tr>`;
   }
 

@@ -112,7 +112,7 @@
       search: '',
       limit: 50,
       offset: 0,
-      sort_col: 'id',
+      sort_col: 'cislo',
       sort_dir: 'ASC',
       total: 0,
       olej: '',
@@ -165,7 +165,6 @@
         tr.setAttribute('data-id', r.id);
         tr.style.cursor = 'pointer';
         tr.innerHTML = `
-          <td>${safeCell(r.id)}</td>
           <td>${safeCell(r.cislo)}</td>
           <td>${safeCell(r.nazev)}</td>
           <td>${safeCell(r.sh)}</td>
@@ -300,7 +299,7 @@
       state.search = '';
       state.limit = 50;
       state.offset = 0;
-      state.sort_col = 'id';
+      state.sort_col = 'cislo';
       state.sort_dir = 'ASC';
       state.olej = '';
       state.platnost = '';
@@ -376,6 +375,23 @@
     }
     if (els.btnExport) els.btnExport.addEventListener('click', exportCsv);
     if (els.btnReset) els.btnReset.addEventListener('click', resetFilters);
+
+    const sortableHeaders = document.querySelectorAll('#sur-table thead th.sortable');
+    sortableHeaders.forEach((th) => {
+      th.style.cursor = 'pointer';
+      th.addEventListener('click', () => {
+        const col = th.getAttribute('data-col');
+        if (!col) return;
+        if (state.sort_col === col) {
+          state.sort_dir = state.sort_dir === 'ASC' ? 'DESC' : 'ASC';
+        } else {
+          state.sort_col = col;
+          state.sort_dir = 'ASC';
+        }
+        state.offset = 0;
+        load();
+      });
+    });
     if (btn.edit) btn.edit.addEventListener('click', () => setEditMode(true));
     if (btn.save) btn.save.addEventListener('click', saveDetail);
     if (btn.del) btn.del.addEventListener('click', deleteCurrent);

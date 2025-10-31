@@ -2,6 +2,16 @@
   const $ = (s, p = document) => p.querySelector(s);
   const $$ = (s, p = document) => Array.from(p.querySelectorAll(s));
 
+  const escapeHtml = (value) => {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+
   const apiBase = (window.API_URL || '/balp2/api.php').replace(/\/api\.php$/i, '');
   const listEndpoint = apiBase + '/api/nh_vyr_list.php';
   const detailEndpoint = apiBase + '/api/nh_vyr_get.php';
@@ -9,6 +19,8 @@
   const exportPdfEndpoint = apiBase + '/api/nh_vyr_export_pdf.php';
   const detailExportCsvEndpoint = apiBase + '/api/nh_vyr_detail_export_csv.php';
   const detailExportPdfEndpoint = apiBase + '/api/nh_vyr_detail_export_pdf.php';
+  const createEndpoint = apiBase + '/api/nh_vyr_create.php';
+  const shadeSearchEndpoint = apiBase + '/api/nh_vyr_shades.php';
 
   const storageKey = 'balp_token';
   const getToken = () => { try { return localStorage.getItem(storageKey) || ''; } catch { return ''; } };
@@ -71,11 +83,22 @@
     reset: document.getElementById('nh-vyr-reset'),
     exportCsv: document.getElementById('nh-vyr-export-csv'),
     exportPdf: document.getElementById('nh-vyr-export-pdf'),
+    newBtn: document.getElementById('nh-vyr-new'),
     tableBody: $('#nh-vyr-table tbody'),
     meta: document.getElementById('nh-vyr-meta'),
     prev: document.getElementById('nh-vyr-prev'),
     next: document.getElementById('nh-vyr-next'),
     modalEl: document.getElementById('nhVyrModal'),
+    newModalEl: document.getElementById('nhVyrNewModal'),
+    newForm: document.getElementById('nh-vyr-new-form'),
+    newAlert: document.getElementById('nh-vyr-new-alert'),
+    newCisloVp: document.getElementById('nh-vyr-new-cislo-vp'),
+    newDatum: document.getElementById('nh-vyr-new-datum'),
+    newMnozstvi: document.getElementById('nh-vyr-new-mnozstvi'),
+    newShade: document.getElementById('nh-vyr-new-shade'),
+    newShadeMeta: document.getElementById('nh-vyr-new-shade-meta'),
+    newShadeSuggestions: document.getElementById('nh-vyr-new-shade-suggestions'),
+    newPoznamka: document.getElementById('nh-vyr-new-poznamka'),
     detail: {
       vp: document.getElementById('nh-vyr-detail-vp'),
       subtitle: document.getElementById('nh-vyr-detail-subtitle'),
@@ -108,6 +131,17 @@
     lastDetailId: null,
   };
 
+  const createState = {
+    shadeId: null,
+    selectedShade: null,
+    suggestions: [],
+    suggestionsToken: 0,
+  };
+
+  const defaultShadeMetaText = 'Vyberte odstín z nabídky.';
+
+  let shadeSearchTimer = null;
+
   const formatVpInput = (input) => {
     if (!input) return;
     const digits = (input.value || '').replace(/\D/g, '').slice(0, 6);
@@ -134,10 +168,134 @@
     if (el.meta) el.meta.textContent = text || '';
   }
 
+  function setNewAlert(message) {
+    if (!el.newAlert) return;
+    if (!message) {
+      el.newAlert.textContent = '';
+      el.newAlert.classList.add('d-none');
+    } else {
+      el.newAlert.textContent = message;
+      el.newAlert.classList.remove('d-none');
+    }
+  }
+
+  function formatShadeLabel(item) {
+    if (!item) return '';
+    const base = item.cislo ?? '';
+    const nh = item.cislo_nh ?? '';
+    const ods = item.cislo_ods ?? '';
+    let code = base;
+    if (!code) {
+      if (nh && ods) code = `${nh}-${ods}`;
+      else if (nh) code = nh;
+      else if (ods) code = ods;
+    }
+    const name = item.nazev ?? item.nazev_nh ?? '';
+    return [code, name].filter(Boolean).join(' – ');
+  }
+
+  function hideShadeSuggestions() {
+    if (!el.newShadeSuggestions) return;
+    el.newShadeSuggestions.classList.add('d-none');
+    el.newShadeSuggestions.innerHTML = '';
+  }
+
+  function renderShadeSuggestions(items) {
+    if (!el.newShadeSuggestions) return;
+    if (!Array.isArray(items) || items.length === 0) {
+      hideShadeSuggestions();
+      return;
+    }
+    const html = items.map((item) => {
+      const id = escapeHtml(String(item?.id ?? ''));
+      const label = escapeHtml(formatShadeLabel(item));
+      return `<button type="button" class="list-group-item list-group-item-action" data-id="${id}">${label}</button>`;
+    }).join('');
+    el.newShadeSuggestions.innerHTML = html;
+    el.newShadeSuggestions.classList.remove('d-none');
+  }
+
+  function setSelectedShade(item) {
+    createState.selectedShade = item || null;
+    createState.shadeId = item && item.id ? Number(item.id) : null;
+    if (el.newShade) {
+      el.newShade.value = formatShadeLabel(item);
+    }
+    if (el.newShadeMeta) {
+      el.newShadeMeta.textContent = createState.shadeId
+        ? `Vybrán odstín: ${formatShadeLabel(item)}`
+        : defaultShadeMetaText;
+    }
+    hideShadeSuggestions();
+  }
+
+  async function fetchShadeSuggestions(query) {
+    const trimmed = (query || '').trim();
+    createState.suggestionsToken += 1;
+    const token = createState.suggestionsToken;
+    if (!trimmed || trimmed.length < 2) {
+      createState.suggestions = [];
+      if (el.newShadeMeta) el.newShadeMeta.textContent = defaultShadeMetaText;
+      hideShadeSuggestions();
+      return;
+    }
+    try {
+      if (el.newShadeMeta) el.newShadeMeta.textContent = 'Vyhledávám…';
+      const params = new URLSearchParams({ q: trimmed, limit: '15' });
+      const data = await apiFetch(`${shadeSearchEndpoint}?${params.toString()}`);
+      if (token !== createState.suggestionsToken) return;
+      const items = Array.isArray(data?.items) ? data.items : [];
+      createState.suggestions = items;
+      renderShadeSuggestions(items);
+      if (el.newShadeMeta) {
+        el.newShadeMeta.textContent = items.length ? defaultShadeMetaText : 'Nenalezeno, zkuste upravit hledání.';
+      }
+    } catch (e) {
+      if (token !== createState.suggestionsToken) return;
+      createState.suggestions = [];
+      hideShadeSuggestions();
+      if (el.newShadeMeta) el.newShadeMeta.textContent = e?.message || 'Vyhledávání selhalo.';
+    }
+  }
+
+  function resetNewForm() {
+    createState.shadeId = null;
+    createState.selectedShade = null;
+    createState.suggestions = [];
+    createState.suggestionsToken += 1;
+    if (el.newForm) el.newForm.reset();
+    if (el.newCisloVp) el.newCisloVp.value = '';
+    if (el.newDatum) el.newDatum.value = '';
+    if (el.newMnozstvi) el.newMnozstvi.value = '';
+    if (el.newShade) el.newShade.value = '';
+    if (el.newPoznamka) el.newPoznamka.value = '';
+    if (el.newShadeMeta) el.newShadeMeta.textContent = defaultShadeMetaText;
+    setNewAlert('');
+    hideShadeSuggestions();
+    if (shadeSearchTimer) {
+      clearTimeout(shadeSearchTimer);
+      shadeSearchTimer = null;
+    }
+  }
+
+  function openNewModal() {
+    resetNewForm();
+    if (newModal) {
+      newModal.show();
+      setTimeout(() => {
+        if (el.newCisloVp) {
+          el.newCisloVp.focus();
+        }
+      }, 150);
+    } else if (el.newModalEl) {
+      el.newModalEl.classList.add('show');
+    }
+  }
+
   function renderRows(items) {
     if (!el.tableBody) return;
     if (!Array.isArray(items) || items.length === 0) {
-      el.tableBody.innerHTML = '<tr><td colspan="7"><em>Žádné výsledky.</em></td></tr>';
+      el.tableBody.innerHTML = '<tr><td colspan="6"><em>Žádné výsledky.</em></td></tr>';
       return;
     }
     const rows = items.map((row) => {
@@ -149,8 +307,8 @@
       const vyrobit = typeof vyrobitVal === 'number' ? formatNumber(vyrobitVal, 3) : (vyrobitVal ?? '');
       const pozn = row.poznamka ?? '';
       const id = row.id ?? '';
-      return `<tr data-id="${String(id)}" style="cursor:pointer">` +
-        `<td class="text-end">${id !== '' ? String(id) : ''}</td>` +
+      const idAttr = escapeHtml(String(id ?? ''));
+      return `<tr data-id="${idAttr}" style="cursor:pointer">` +
         `<td>${cisloVp || ''}</td>` +
         `<td>${datum}</td>` +
         `<td>${nh}</td>` +
@@ -251,6 +409,119 @@
     });
   }
 
+  if (el.newBtn) {
+    el.newBtn.addEventListener('click', () => {
+      openNewModal();
+    });
+  }
+
+  if (el.newCisloVp) {
+    el.newCisloVp.addEventListener('input', () => formatVpInput(el.newCisloVp));
+    el.newCisloVp.addEventListener('blur', () => formatVpInput(el.newCisloVp));
+  }
+
+  if (el.newShadeSuggestions) {
+    el.newShadeSuggestions.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('[data-id]');
+      if (!btn) return;
+      const id = btn.getAttribute('data-id');
+      const item = createState.suggestions.find((entry) => String(entry?.id ?? '') === String(id ?? ''));
+      if (item) {
+        setSelectedShade(item);
+      }
+    });
+  }
+
+  if (el.newShade) {
+    el.newShade.addEventListener('input', () => {
+      createState.shadeId = null;
+      createState.selectedShade = null;
+      setNewAlert('');
+      if (shadeSearchTimer) clearTimeout(shadeSearchTimer);
+      shadeSearchTimer = setTimeout(() => {
+        fetchShadeSuggestions(el.newShade.value || '');
+      }, 250);
+    });
+    el.newShade.addEventListener('focus', () => {
+      if (createState.suggestions.length > 0) {
+        renderShadeSuggestions(createState.suggestions);
+      }
+    });
+    el.newShade.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') {
+        hideShadeSuggestions();
+        return;
+      }
+      if (ev.key === 'Enter') {
+        if (createState.suggestions.length > 0) {
+          ev.preventDefault();
+          setSelectedShade(createState.suggestions[0]);
+        }
+      }
+    });
+  }
+
+  document.addEventListener('click', (ev) => {
+    if (!el.newShade) return;
+    if (ev.target === el.newShade) return;
+    if (el.newShadeSuggestions && el.newShadeSuggestions.contains(ev.target)) return;
+    hideShadeSuggestions();
+  });
+
+  if (el.newForm) {
+    el.newForm.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      setNewAlert('');
+      const vpDigits = sanitizeVpState(el.newCisloVp?.value || '');
+      if (!vpDigits || vpDigits.length !== 6) {
+        setNewAlert('Zadejte číslo VP ve formátu 00-0000.');
+        return;
+      }
+      if (!createState.shadeId) {
+        setNewAlert('Vyberte odstín NH.');
+        return;
+      }
+      const formattedVp = displayVp(vpDigits);
+      const qtyRaw = el.newMnozstvi?.value ?? '';
+      let vyrobitValue = null;
+      if (qtyRaw !== '') {
+        const parsed = Number(String(qtyRaw).replace(/\s+/g, '').replace(',', '.'));
+        if (!Number.isFinite(parsed) || parsed < 0) {
+          setNewAlert('Množství musí být nezáporné číslo.');
+          return;
+        }
+        vyrobitValue = parsed;
+      }
+      const payload = {
+        cislo_vp: formattedVp,
+        cislo_vp_digits: vpDigits,
+        shade_id: createState.shadeId,
+        datum_vyroby: el.newDatum?.value || null,
+        vyrobit_g: vyrobitValue,
+        poznamka: (el.newPoznamka?.value || '').trim() || null,
+      };
+      if (!payload.datum_vyroby) delete payload.datum_vyroby;
+      if (payload.vyrobit_g === null || Number.isNaN(payload.vyrobit_g)) delete payload.vyrobit_g;
+      if (!payload.poznamka) delete payload.poznamka;
+      try {
+        const result = await apiFetch(createEndpoint, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+        const newId = result?.id ?? result?.item?.id ?? null;
+        if (newModal) newModal.hide();
+        resetNewForm();
+        state.offset = 0;
+        await load(true);
+        if (newId) {
+          openDetail(newId);
+        }
+      } catch (e) {
+        setNewAlert(e?.message || 'Vytvoření selhalo.');
+      }
+    });
+  }
+
   if (el.prev) {
     el.prev.addEventListener('click', () => {
       if (state.offset === 0) return;
@@ -308,6 +579,23 @@
 
   if (el.exportCsv) el.exportCsv.addEventListener('click', () => openExport(exportCsvEndpoint));
   if (el.exportPdf) el.exportPdf.addEventListener('click', () => openExport(exportPdfEndpoint));
+
+  let newModal = null;
+  if (el.newModalEl) {
+    if (window.bootstrap && typeof window.bootstrap.Modal === 'function') {
+      newModal = new window.bootstrap.Modal(el.newModalEl);
+    } else if (typeof bootstrap !== 'undefined' && bootstrap?.Modal) {
+      newModal = new bootstrap.Modal(el.newModalEl);
+    }
+    el.newModalEl.addEventListener('shown.bs.modal', () => {
+      if (el.newCisloVp) {
+        el.newCisloVp.focus();
+      }
+    });
+    el.newModalEl.addEventListener('hidden.bs.modal', () => {
+      resetNewForm();
+    });
+  }
 
   let detailModal = null;
   if (el.modalEl) {

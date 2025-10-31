@@ -181,6 +181,218 @@ if (!function_exists('nh_vyr_vyr_nh_fk')) {
     }
 }
 
+if (!function_exists('nh_vyr_shade_table_name')) {
+    function nh_vyr_shade_table_name(): string
+    {
+        return 'balp_nhods';
+    }
+}
+
+if (!function_exists('nh_vyr_shade_nh_fk')) {
+    function nh_vyr_shade_nh_fk(PDO $pdo): ?string
+    {
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache;
+        }
+        $cache = nh_vyr_resolve_column($pdo, nh_vyr_shade_table_name(), ['idnh', 'id_nh', 'idmaster', 'id_nhmaster']);
+        return $cache;
+    }
+}
+
+if (!function_exists('nh_vyr_shade_code_column')) {
+    function nh_vyr_shade_code_column(PDO $pdo): ?string
+    {
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache;
+        }
+        $cache = nh_vyr_resolve_column($pdo, nh_vyr_shade_table_name(), ['cislo', 'kod', 'oznaceni', 'cislo_full']);
+        return $cache;
+    }
+}
+
+if (!function_exists('nh_vyr_shade_variant_column')) {
+    function nh_vyr_shade_variant_column(PDO $pdo): ?string
+    {
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache;
+        }
+        $cache = nh_vyr_resolve_column($pdo, nh_vyr_shade_table_name(), ['cislo_ods', 'cisloods', 'ods_cislo']);
+        return $cache;
+    }
+}
+
+if (!function_exists('nh_vyr_shade_nh_code_column')) {
+    function nh_vyr_shade_nh_code_column(PDO $pdo): ?string
+    {
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache;
+        }
+        $cache = nh_vyr_resolve_column($pdo, nh_vyr_shade_table_name(), ['cislo_nh', 'cislonh', 'nh_cislo']);
+        return $cache;
+    }
+}
+
+if (!function_exists('nh_vyr_shade_name_column')) {
+    function nh_vyr_shade_name_column(PDO $pdo): ?string
+    {
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache;
+        }
+        $cache = nh_vyr_resolve_column($pdo, nh_vyr_shade_table_name(), ['nazev', 'name', 'popis']);
+        return $cache;
+    }
+}
+
+if (!function_exists('nh_vyr_fetch_shade')) {
+    function nh_vyr_fetch_shade(PDO $pdo, int $id): ?array
+    {
+        if ($id <= 0) {
+            return null;
+        }
+
+        $table = sql_quote_ident(nh_vyr_shade_table_name());
+        $alias = 'ods';
+        $nhTable = sql_quote_ident(balp_nh_table_name());
+        $nhAlias = 'nh';
+        $nhFk = nh_vyr_shade_nh_fk($pdo);
+        $codeCol = nh_vyr_shade_code_column($pdo);
+        $variantCol = nh_vyr_shade_variant_column($pdo);
+        $nhCodeCol = nh_vyr_shade_nh_code_column($pdo);
+        $nameCol = nh_vyr_shade_name_column($pdo);
+
+        $select = [
+            "$alias." . sql_quote_ident('id') . ' AS id',
+            $codeCol ? "$alias." . sql_quote_ident($codeCol) . ' AS shade_cislo' : 'NULL AS shade_cislo',
+            $variantCol ? "$alias." . sql_quote_ident($variantCol) . ' AS shade_cislo_ods' : 'NULL AS shade_cislo_ods',
+            $nhCodeCol ? "$alias." . sql_quote_ident($nhCodeCol) . ' AS shade_cislo_nh' : 'NULL AS shade_cislo_nh',
+            $nameCol ? "$alias." . sql_quote_ident($nameCol) . ' AS shade_nazev' : 'NULL AS shade_nazev',
+            "$nhAlias." . sql_quote_ident('cislo') . ' AS nh_cislo',
+            "$nhAlias." . sql_quote_ident('nazev') . ' AS nh_nazev',
+        ];
+
+        $join = '';
+        if ($nhFk !== null) {
+            $join = "LEFT JOIN $nhTable AS $nhAlias ON $nhAlias.id = $alias." . sql_quote_ident($nhFk);
+        } else {
+            $join = "LEFT JOIN $nhTable AS $nhAlias ON 1=1";
+        }
+
+        $sql = 'SELECT ' . implode(', ', $select)
+            . " FROM $table AS $alias $join WHERE $alias." . sql_quote_ident('id') . ' = :id LIMIT 1';
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([':id' => $id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return null;
+        }
+
+        $result = [
+            'id' => (int)($row['id'] ?? 0),
+            'cislo' => nh_vyr_first_value($row, ['shade_cislo']),
+            'cislo_nh' => nh_vyr_first_value($row, ['shade_cislo_nh', 'nh_cislo']),
+            'cislo_ods' => nh_vyr_first_value($row, ['shade_cislo_ods']),
+            'nazev' => nh_vyr_first_value($row, ['shade_nazev', 'nh_nazev']),
+        ];
+
+        return $result;
+    }
+}
+
+if (!function_exists('nh_vyr_lookup_shade')) {
+    function nh_vyr_lookup_shade(PDO $pdo, ?string $cisloNh, ?string $cisloOds, ?string $cislo): ?array
+    {
+        $cisloNh = $cisloNh !== null ? trim($cisloNh) : null;
+        $cisloOds = $cisloOds !== null ? trim($cisloOds) : null;
+        $cislo = $cislo !== null ? trim($cislo) : null;
+
+        if (($cisloNh === null || $cisloNh === '')
+            && ($cisloOds === null || $cisloOds === '')
+            && ($cislo === null || $cislo === '')) {
+            return null;
+        }
+
+        $table = sql_quote_ident(nh_vyr_shade_table_name());
+        $alias = 'ods';
+        $nhTable = sql_quote_ident(balp_nh_table_name());
+        $nhAlias = 'nh';
+        $nhFk = nh_vyr_shade_nh_fk($pdo);
+        $codeCol = nh_vyr_shade_code_column($pdo);
+        $variantCol = nh_vyr_shade_variant_column($pdo);
+        $nhCodeCol = nh_vyr_shade_nh_code_column($pdo);
+        $nameCol = nh_vyr_shade_name_column($pdo);
+
+        $select = [
+            "$alias." . sql_quote_ident('id') . ' AS id',
+            $codeCol ? "$alias." . sql_quote_ident($codeCol) . ' AS shade_cislo' : 'NULL AS shade_cislo',
+            $variantCol ? "$alias." . sql_quote_ident($variantCol) . ' AS shade_cislo_ods' : 'NULL AS shade_cislo_ods',
+            $nhCodeCol ? "$alias." . sql_quote_ident($nhCodeCol) . ' AS shade_cislo_nh' : 'NULL AS shade_cislo_nh',
+            $nameCol ? "$alias." . sql_quote_ident($nameCol) . ' AS shade_nazev' : 'NULL AS shade_nazev',
+            "$nhAlias." . sql_quote_ident('cislo') . ' AS nh_cislo',
+            "$nhAlias." . sql_quote_ident('nazev') . ' AS nh_nazev',
+        ];
+
+        $join = '';
+        if ($nhFk !== null) {
+            $join = "LEFT JOIN $nhTable AS $nhAlias ON $nhAlias.id = $alias." . sql_quote_ident($nhFk);
+        } else {
+            $join = "LEFT JOIN $nhTable AS $nhAlias ON 1=1";
+        }
+
+        $where = ['1'];
+        $params = [];
+
+        if ($cisloNh !== null && $cisloNh !== '') {
+            $conditions = [];
+            if ($nhCodeCol) {
+                $conditions[] = "$alias." . sql_quote_ident($nhCodeCol) . ' = :cislo_nh';
+            }
+            $conditions[] = "$nhAlias." . sql_quote_ident('cislo') . ' = :cislo_nh';
+            $where[] = '(' . implode(' OR ', $conditions) . ')';
+            $params[':cislo_nh'] = $cisloNh;
+        }
+
+        if ($cisloOds !== null && $cisloOds !== '' && $variantCol) {
+            $where[] = "$alias." . sql_quote_ident($variantCol) . ' = :cislo_ods';
+            $params[':cislo_ods'] = $cisloOds;
+        }
+
+        if ($cislo !== null && $cislo !== '' && $codeCol) {
+            $where[] = "$alias." . sql_quote_ident($codeCol) . ' = :cislo';
+            $params[':cislo'] = $cislo;
+        }
+
+        $sql = 'SELECT ' . implode(', ', $select)
+            . " FROM $table AS $alias $join"
+            . ' WHERE ' . implode(' AND ', $where)
+            . ' ORDER BY ' . "$alias." . sql_quote_ident('id') . ' DESC'
+            . ' LIMIT 1';
+
+        $stmt = $pdo->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return null;
+        }
+
+        return [
+            'id' => (int)($row['id'] ?? 0),
+            'cislo' => nh_vyr_first_value($row, ['shade_cislo']),
+            'cislo_nh' => nh_vyr_first_value($row, ['shade_cislo_nh', 'nh_cislo']),
+            'cislo_ods' => nh_vyr_first_value($row, ['shade_cislo_ods']),
+            'nazev' => nh_vyr_first_value($row, ['shade_nazev', 'nh_nazev']),
+        ];
+    }
+}
+
 if (!function_exists('nh_vyr_rec_vyr_fk')) {
     function nh_vyr_rec_vyr_fk(PDO $pdo): ?string
     {

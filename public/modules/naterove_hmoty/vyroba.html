@@ -23,6 +23,7 @@
         <button type="button" id="nh-vyr-reset" class="btn btn-outline-secondary">Reset</button>
         <button type="button" id="nh-vyr-export-csv" class="btn btn-outline-secondary">Export CSV</button>
         <button type="button" id="nh-vyr-export-pdf" class="btn btn-outline-secondary">Export PDF</button>
+        <button type="button" id="nh-vyr-new" class="btn btn-success">Nový VP</button>
       </div>
     </div>
   </div>
@@ -31,7 +32,6 @@
     <table class="table table-sm table-striped align-middle" id="nh-vyr-table">
       <thead>
         <tr>
-          <th scope="col" data-col="id" class="sortable text-end">ID</th>
           <th scope="col" data-col="cislo_vp" class="sortable">Číslo VP</th>
           <th scope="col" data-col="datum_vyroby" class="sortable">Datum výroby</th>
           <th scope="col" data-col="cislo_nh" class="sortable">Číslo NH</th>
@@ -118,6 +118,53 @@
         </div>
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zavřít</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="nhVyrNewModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <form id="nh-vyr-new-form">
+        <div class="modal-header">
+          <h5 class="modal-title">Nový výrobní příkaz</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zavřít"></button>
+        </div>
+        <div class="modal-body">
+          <div id="nh-vyr-new-alert" class="alert alert-danger d-none" role="alert"></div>
+          <div class="row g-3">
+            <div class="col-sm-4">
+              <label for="nh-vyr-new-cislo-vp" class="form-label">Číslo VP</label>
+              <input type="text" class="form-control" id="nh-vyr-new-cislo-vp" maxlength="7" placeholder="00-0000" autocomplete="off">
+              <div class="form-text">Použijte formát 00-0000.</div>
+            </div>
+            <div class="col-sm-4">
+              <label for="nh-vyr-new-datum" class="form-label">Datum výroby</label>
+              <input type="date" class="form-control" id="nh-vyr-new-datum">
+            </div>
+            <div class="col-sm-4">
+              <label for="nh-vyr-new-mnozstvi" class="form-label">Vyrobit (g)</label>
+              <input type="number" class="form-control" id="nh-vyr-new-mnozstvi" min="0" step="0.01" placeholder="0,00">
+            </div>
+            <div class="col-12">
+              <label for="nh-vyr-new-shade" class="form-label">Odstín NH</label>
+              <div class="position-relative">
+                <input type="text" class="form-control" id="nh-vyr-new-shade" autocomplete="off" placeholder="Zadejte číslo nebo název odstínu…">
+                <div class="list-group position-absolute w-100 shadow-sm d-none" id="nh-vyr-new-shade-suggestions" style="max-height: 260px; overflow-y: auto; z-index: 1056;"></div>
+              </div>
+              <div class="form-text" id="nh-vyr-new-shade-meta">Vyberte odstín z nabídky.</div>
+            </div>
+            <div class="col-12">
+              <label for="nh-vyr-new-poznamka" class="form-label">Poznámka</label>
+              <textarea id="nh-vyr-new-poznamka" class="form-control" rows="3" placeholder="Poznámka k výrobnímu příkazu…"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zavřít</button>
+          <button type="submit" class="btn btn-primary">Vytvořit</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
