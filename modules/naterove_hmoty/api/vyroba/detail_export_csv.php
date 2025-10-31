@@ -44,8 +44,14 @@ try {
         exit;
     }
 
-    $cisloVp = nh_vyr_format_vp($row['cislo_vp'] ?? null) ?? ($row['cislo_vp'] ?? '');
+    $row = nh_vyr_normalize_header_row($pdo, $row);
+    $cisloVp = $row['cislo_vp'] ?? '';
     $datum = isset($row['datum_vyroby']) && $row['datum_vyroby'] ? substr((string)$row['datum_vyroby'], 0, 10) : '';
+    $vyrobit = $row['vyrobit_g'] ?? '';
+    if (is_float($vyrobit) || is_int($vyrobit)) {
+        $vyrobit = number_format((float)$vyrobit, 3, ',', ' ');
+        $vyrobit = rtrim(rtrim($vyrobit, '0'), ',');
+    }
 
     $out = fopen('php://output', 'w');
     fputcsv($out, ['ID', 'Číslo VP', 'Datum výroby', 'Číslo NH', 'Název NH', 'Vyrobit (g)', 'Poznámka'], ';');
@@ -55,7 +61,7 @@ try {
         $datum,
         $row['cislo_nh'] ?? '',
         $row['nazev_nh'] ?? '',
-        $row['vyrobit_g'] ?? '',
+        $vyrobit,
         $row['poznamka'] ?? '',
     ], ';');
 
@@ -63,18 +69,24 @@ try {
     fputcsv($out, [], ';');
     fputcsv($out, ['Receptura'], ';');
     if ($lines) {
-        fputcsv($out, ['ID položky', 'Typ', 'Kód', 'Název', 'Množství (g/kg)'], ';');
-        foreach ($lines as $line) {
-            $qty = $line['mnozstvi'] ?? '';
-            if (is_numeric($qty)) {
-                $qty = (string)+$qty;
+        fputcsv($out, ['ID položky', 'Typ', 'Kód', 'Název', 'Množství (g/kg)', 'Navážit (g)'], ';');
+        $formatNumber = static function ($value) {
+            if (is_float($value) || is_int($value)) {
+                $formatted = number_format((float)$value, 3, ',', ' ');
+                return rtrim(rtrim($formatted, '0'), ',');
             }
+            return $value;
+        };
+        foreach ($lines as $line) {
+            $qty = $formatNumber($line['mnozstvi'] ?? '');
+            $nav = $formatNumber($line['navazit'] ?? '');
             fputcsv($out, [
                 $line['id'] ?? '',
                 $line['typ'] ?? '',
                 $line['cislo'] ?? '',
                 $line['nazev'] ?? '',
                 $qty,
+                $nav,
             ], ';');
         }
     } else {
@@ -85,13 +97,12 @@ try {
     fputcsv($out, [], ';');
     fputcsv($out, ['Laboratorní zkoušky'], ';');
     if ($tests) {
-        fputcsv($out, ['Parametr', 'Hodnota', 'Jednotka', 'Poznámka'], ';');
+        fputcsv($out, ['Datum', 'Typ', 'Výsledek'], ';');
         foreach ($tests as $test) {
             fputcsv($out, [
-                $test['nazev'] ?? '',
-                $test['hodnota'] ?? '',
-                $test['jednotka'] ?? '',
-                $test['poznamka'] ?? '',
+                $test['datum'] ?? '',
+                $test['typ'] ?? '',
+                $test['vysledek'] ?? '',
             ], ';');
         }
     } else {

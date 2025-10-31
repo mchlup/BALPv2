@@ -34,19 +34,8 @@ try {
         respond_json(['error' => 'not found'], 404);
     }
 
-    $row['cislo_vp'] = nh_vyr_format_vp($row['cislo_vp'] ?? null) ?? ($row['cislo_vp'] ?? null);
-    if (isset($row['datum_vyroby']) && $row['datum_vyroby'] !== null) {
-        $row['datum_vyroby'] = substr((string)$row['datum_vyroby'], 0, 10);
-    }
-
+    $row = nh_vyr_normalize_header_row($pdo, $row);
     $lines = $detail['rows'] ?? [];
-    foreach ($lines as &$line) {
-        if (isset($line['mnozstvi']) && $line['mnozstvi'] !== null) {
-            $line['mnozstvi'] = is_numeric($line['mnozstvi']) ? (float)$line['mnozstvi'] : $line['mnozstvi'];
-        }
-    }
-    unset($line);
-
     $tests = $detail['zkousky'] ?? [];
 
     echo json_encode([
