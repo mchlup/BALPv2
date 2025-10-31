@@ -254,17 +254,33 @@
   });
 
   // Načtení při prvním zobrazení záložky
-  const onShown = (ev) => {
-    if (ev && ev.target && ev.target.id !== 'tab-nh') return;
-    if (!el.pane.classList.contains('loaded')) {
+  const ensureTabLoaded = (force = false) => {
+    if (!el.pane) return;
+    const firstTime = !el.pane.classList.contains('loaded');
+    if (firstTime) {
       el.pane.classList.add('loaded');
       load();
+      return;
     }
+    if (force) {
+      load(true);
+    }
+  };
+
+  const onShown = (ev) => {
+    if (ev && ev.target && ev.target.id !== 'tab-nh') return;
+    ensureTabLoaded(false);
   };
   // Pokud používáte Bootstrap 5 tab events:
   try {
     document.addEventListener('shown.bs.tab', onShown);
   } catch {}
+  // Reakce na vlastní událost UI
+  document.addEventListener('balp:tab-shown', (ev) => {
+    if (!ev?.detail) return;
+    if (ev.detail.tab !== 'nh') return;
+    ensureTabLoaded(Boolean(ev.detail.refresh));
+  });
   // Když už je NH aktivní hned po načtení
   if (el.tabBtn && el.tabBtn.classList.contains('active')) onShown({target: el.tabBtn});
 
