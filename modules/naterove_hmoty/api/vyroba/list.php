@@ -23,6 +23,12 @@ try {
 
     $pdo = db();
 
+    $vpColumn = nh_vyr_vp_column($pdo);
+    $dateColumn = nh_vyr_date_column($pdo);
+    $qtyColumn = nh_vyr_qty_column($pdo);
+    $noteColumn = nh_vyr_note_column($pdo);
+    $digitsExpr = nh_vyr_digits_expr($pdo, 'v');
+
     $limit = max(1, min(200, (int)($_GET['limit'] ?? 50)));
     $offset = max(0, (int)($_GET['offset'] ?? 0));
     $sortCol = strtolower((string)($_GET['sort_col'] ?? 'cislo_vp'));
@@ -42,12 +48,12 @@ try {
 
     $columns = [
         'id' => 'v.id',
-        'cislo_vp' => nh_vyr_digits_expr($alias),
-        'datum_vyroby' => 'v.datum_vyroby',
+        'cislo_vp' => $digitsExpr,
+        'datum_vyroby' => $dateColumn ? nh_vyr_column_ref($alias, $dateColumn) : 'v.id',
         'cislo_nh' => 'nh.cislo',
         'nazev_nh' => 'nh.nazev',
-        'vyrobit_g' => 'v.vyrobit_g',
-        'poznamka' => 'v.poznamka',
+        'vyrobit_g' => $qtyColumn ? nh_vyr_column_ref($alias, $qtyColumn) : 'v.id',
+        'poznamka' => $noteColumn ? nh_vyr_column_ref($alias, $noteColumn) : 'v.id',
     ];
 
     $orderExpr = $columns['cislo_vp'];
@@ -63,11 +69,11 @@ try {
     $params = [];
 
     if ($vpFromDigits !== null) {
-        $where[] = nh_vyr_digits_condition('v.cislo_vp', 'vp_from', '>=');
+        $where[] = nh_vyr_digits_condition($pdo, $alias, 'vp_from', '>=');
         $params[':vp_from'] = $vpFromDigits;
     }
     if ($vpToDigits !== null) {
-        $where[] = nh_vyr_digits_condition('v.cislo_vp', 'vp_to', '<=');
+        $where[] = nh_vyr_digits_condition($pdo, $alias, 'vp_to', '<=');
         $params[':vp_to'] = $vpToDigits;
     }
 
@@ -83,7 +89,12 @@ try {
 
     $orderSql = $orderExpr . ' ' . $sortDir;
 
-    $selectSql = "SELECT v.id, v.cislo_vp, v.datum_vyroby, v.vyrobit_g, v.poznamka, v." . sql_quote_ident($fkToNh) . " AS idnh,
+    $vpSelect = nh_vyr_column_ref($alias, $vpColumn) . ' AS cislo_vp_raw';
+    $dateSelect = $dateColumn ? nh_vyr_column_ref($alias, $dateColumn) . ' AS datum_vyroby_raw' : 'NULL AS datum_vyroby_raw';
+    $qtySelect = $qtyColumn ? nh_vyr_column_ref($alias, $qtyColumn) . ' AS vyrobit_g_raw' : 'NULL AS vyrobit_g_raw';
+    $noteSelect = $noteColumn ? nh_vyr_column_ref($alias, $noteColumn) . ' AS poznamka_raw' : 'NULL AS poznamka_raw';
+
+    $selectSql = "SELECT v.id, $vpSelect, $dateSelect, $qtySelect, $noteSelect, v." . sql_quote_ident($fkToNh) . " AS idnh,
         nh.cislo AS cislo_nh, nh.nazev AS nazev_nh
         FROM $table AS v
         $join
@@ -101,10 +112,7 @@ try {
 
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     foreach ($rows as &$row) {
-        $row['cislo_vp'] = nh_vyr_format_vp($row['cislo_vp']) ?? ($row['cislo_vp'] ?? null);
-        if (isset($row['datum_vyroby']) && $row['datum_vyroby'] !== null) {
-            $row['datum_vyroby'] = substr((string)$row['datum_vyroby'], 0, 10);
-        }
+        $row = nh_vyr_normalize_header_row($pdo, $row);
     }
     unset($row);
 

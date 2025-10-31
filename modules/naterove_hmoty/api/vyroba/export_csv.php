@@ -29,6 +29,12 @@ try {
 
     $pdo = db();
 
+    $vpColumn = nh_vyr_vp_column($pdo);
+    $dateColumn = nh_vyr_date_column($pdo);
+    $qtyColumn = nh_vyr_qty_column($pdo);
+    $noteColumn = nh_vyr_note_column($pdo);
+    $alias = 'v';
+
     $vpFrom = nh_vyr_normalize_vp_digits($_GET['vp_od'] ?? $_GET['od'] ?? null);
     $vpTo   = nh_vyr_normalize_vp_digits($_GET['vp_do'] ?? $_GET['do'] ?? null);
     $limit  = null;
@@ -46,22 +52,27 @@ try {
     $where = [];
     $params = [];
     if ($vpFrom !== null) {
-        $where[] = nh_vyr_digits_condition('v.cislo_vp', 'vp_from', '>=');
+        $where[] = nh_vyr_digits_condition($pdo, $alias, 'vp_from', '>=');
         $params[':vp_from'] = $vpFrom;
     }
     if ($vpTo !== null) {
-        $where[] = nh_vyr_digits_condition('v.cislo_vp', 'vp_to', '<=');
+        $where[] = nh_vyr_digits_condition($pdo, $alias, 'vp_to', '<=');
         $params[':vp_to'] = $vpTo;
     }
     $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 
-    $orderSql = nh_vyr_digits_expr('v') . ' ASC';
+    $orderSql = nh_vyr_digits_expr($pdo, $alias) . ' ASC';
     $limitSql = '';
     if ($limit !== null) {
         $limitSql = ' LIMIT :limit OFFSET :offset';
     }
 
-    $sql = "SELECT v.id, v.cislo_vp, v.datum_vyroby, v.vyrobit_g, v.poznamka, nh.cislo AS cislo_nh, nh.nazev AS nazev_nh
+    $vpSelect = nh_vyr_column_ref($alias, $vpColumn) . ' AS cislo_vp_raw';
+    $dateSelect = $dateColumn ? nh_vyr_column_ref($alias, $dateColumn) . ' AS datum_vyroby_raw' : 'NULL AS datum_vyroby_raw';
+    $qtySelect = $qtyColumn ? nh_vyr_column_ref($alias, $qtyColumn) . ' AS vyrobit_g_raw' : 'NULL AS vyrobit_g_raw';
+    $noteSelect = $noteColumn ? nh_vyr_column_ref($alias, $noteColumn) . ' AS poznamka_raw' : 'NULL AS poznamka_raw';
+
+    $sql = "SELECT v.id, $vpSelect, $dateSelect, $qtySelect, $noteSelect, nh.cislo AS cislo_nh, nh.nazev AS nazev_nh
             FROM $table AS v
             $join
             $whereSql
@@ -81,15 +92,21 @@ try {
     $out = fopen('php://output', 'w');
     fputcsv($out, ['ID', 'Číslo VP', 'Datum výroby', 'Číslo NH', 'Název NH', 'Vyrobit (g)', 'Poznámka'], ';');
     foreach ($rows as $row) {
-        $cisloVp = nh_vyr_format_vp($row['cislo_vp'] ?? null) ?? ($row['cislo_vp'] ?? '');
+        $row = nh_vyr_normalize_header_row($pdo, $row);
+        $cisloVp = $row['cislo_vp'] ?? '';
         $datum = isset($row['datum_vyroby']) && $row['datum_vyroby'] ? substr((string)$row['datum_vyroby'], 0, 10) : '';
+        $vyrobit = $row['vyrobit_g'] ?? '';
+        if (is_float($vyrobit) || is_int($vyrobit)) {
+            $vyrobit = number_format((float)$vyrobit, 3, ',', ' ');
+            $vyrobit = rtrim(rtrim($vyrobit, '0'), ',');
+        }
         fputcsv($out, [
             $row['id'] ?? '',
             $cisloVp,
             $datum,
             $row['cislo_nh'] ?? '',
             $row['nazev_nh'] ?? '',
-            $row['vyrobit_g'] ?? '',
+            $vyrobit,
             $row['poznamka'] ?? '',
         ], ';');
     }
