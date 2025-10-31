@@ -8,6 +8,7 @@
 
 declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
+header('Content-Language: cs');
 
 require_once balp_api_path('auth_helpers.php');
 require_once balp_api_path('jwt_helper.php');
@@ -20,7 +21,7 @@ try {
   $JWT_SECRET = $CONFIG['auth']['jwt_secret']
     ?? ($CONFIG['jwt_secret'] ?? (getenv('BALP_JWT_SECRET') ?: 'change_this_secret'));
   $token = balp_get_bearer_token();
-  if (!$token) { http_response_code(401); echo json_encode(['error'=>'missing token'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE); exit; }
+  if (!$token) { http_response_code(401); echo json_encode(balp_to_utf8(['error'=>'missing token']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE); exit; }
   jwt_decode($token, $JWT_SECRET, true);
 
   // DB
@@ -28,18 +29,14 @@ try {
   $db_user = $CONFIG['db_user'] ?? getenv('BALP_DB_USER');
   $db_pass = $CONFIG['db_pass'] ?? getenv('BALP_DB_PASS');
   if (!$db_dsn) throw new Exception('DB DSN missing');
-  $pdo = new PDO($db_dsn, $db_user, $db_pass, [
-    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4",
-  ]);
+  $pdo = new PDO($db_dsn, $db_user, $db_pass, balp_utf8_pdo_options());
 
   $id  = isset($_GET['id']) ? (int)$_GET['id'] : 0;
   $mno = isset($_GET['mnozstvi_kg']) ? (float)$_GET['mnozstvi_kg'] : 1.0;
   if ($id <= 0) throw new Exception('missing id');
 
   // Hlava polotovaru
-  $q = $pdo->prepare("SELECT id, cislo, nazev, sh, sus_sh, sus_hmot, sus_obj, okp, pozn
+  $q = $pdo->prepare("SELECT id, cislo, nazev, sh, sus_sh, sus_hmot, okp, pozn
                       FROM balp_pol WHERE id=:id LIMIT 1");
   $q->execute([':id'=>$id]);
   $head = $q->fetch();
@@ -50,7 +47,7 @@ try {
     SELECT
       rec.techpor,
       s.cislo, s.nazev,
-      s.sh, s.sus_hmot, s.sus_obj,
+      s.sh, s.sus_hmot,
       rec.gkg,
       ROUND(rec.gkg * :kg, 2) AS navazit_g,
       s.dtod AS platnost_od,
@@ -71,7 +68,6 @@ try {
       p.cislo, p.nazev,
       p.sh,
       NULL AS sus_hmot,
-      NULL AS sus_obj,
       rec.gkg,
       ROUND(rec.gkg * :kg, 2) AS navazit_g,
       p.dtod AS platnost_od,
@@ -95,14 +91,14 @@ try {
   $normalizeDates($sur);
   $normalizeDates($pol);
 
-  echo json_encode([
+  echo json_encode(balp_to_utf8([
     'pol'         => $head,
     'mnozstvi_kg' => $mno,
     'suroviny'    => $sur,
     'polotovary'  => $pol,
-  ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+  ]), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
 } catch (Throwable $e) {
   http_response_code(500);
-  echo json_encode(['error'=>$e->getMessage()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+  echo json_encode(balp_to_utf8(['error'=>$e->getMessage()]), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
 }
 

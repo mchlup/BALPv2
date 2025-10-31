@@ -5,13 +5,14 @@
 
 declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
+header('Content-Language: cs');
 
 require_once balp_api_path('auth_helpers.php');
 require_once balp_api_path('jwt_helper.php');
 
 function j($d, int $code=200) {
   http_response_code($code);
-  echo json_encode($d, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+  echo json_encode(balp_to_utf8($d), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
   exit;
 }
 
@@ -31,11 +32,7 @@ try {
   $pwd  = $CONFIG['db_pass'] ?? getenv('BALP_DB_PASS');
   if (!$dsn) j(['error'=>'DB DSN missing'], 500);
 
-  $pdo = new PDO($dsn, $usr, $pwd, [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4",
-  ]);
+  $pdo = new PDO($dsn, $usr, $pwd, balp_utf8_pdo_options());
 
   // Params
   $search   = trim((string)($_GET['search'] ?? ''));

@@ -2,7 +2,8 @@
 require_once balp_api_path('auth_helpers.php');
 require_once balp_api_path('jwt_helper.php');
 header('Content-Type: application/json; charset=utf-8');
-function out($d,$c=200){ http_response_code($c); echo json_encode($d, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE); exit; }
+header('Content-Language: cs');
+function out($d,$c=200){ http_response_code($c); echo json_encode(balp_to_utf8($d), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE); exit; }
 
 try {
   $config_file = dirname(__DIR__).'/config/config.php'; $CONFIG=[]; if (file_exists($config_file)) require $config_file;
@@ -12,7 +13,7 @@ try {
 
   $raw = file_get_contents('php://input'); $b = json_decode($raw,true) ?: [];
   $id = isset($b['id']) ? (int)$b['id'] : 0;
-  $fields = ['cislo','nazev','sh','sh_skut','sus_sh','sus_hmot','sus_obj','okp','kvn','olej','pozn','dt_akt_sloz','dtod','dtdo'];
+  $fields = ['cislo','nazev','sh','sh_skut','sus_sh','sus_hmot','okp','kvn','olej','pozn','dt_akt_sloz','dtod','dtdo'];
   $data = [];
   foreach ($fields as $f) { $data[$f] = array_key_exists($f,$b) ? ($b[$f]!==''?$b[$f]:null) : null; }
   if (!($data['nazev'] ?? '')) out(['error'=>'nazev is required'],400);
@@ -21,7 +22,7 @@ try {
   $user= $CONFIG['db_user']?? getenv('BALP_DB_USER');
   $pass= $CONFIG['db_pass']?? getenv('BALP_DB_PASS');
   if (!$dsn) out(['error'=>'DB DSN missing'],500);
-  $pdo = new PDO($dsn,$user,$pass,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC, PDO::MYSQL_ATTR_INIT_COMMAND=>"SET NAMES utf8mb4"]);
+  $pdo = new PDO($dsn,$user,$pass, balp_utf8_pdo_options());
 
   if ($id>0) {
     $sets = implode(', ', array_map(fn($f)=>"`$f` = :$f",$fields));
@@ -30,7 +31,7 @@ try {
     foreach ($fields as $f) $st->bindValue(":$f", $data[$f]);
     $st->bindValue(':id',$id,PDO::PARAM_INT);
     $st->execute();
-    out(['ok'=>true,'id'=>$id,'mode'=>'update']);
+    out(balp_to_utf8(['ok'=>true,'id'=>$id,'mode'=>'update']));
   } else {
     $cols = '`'.implode('`,`',$fields).'`';
     $vals = ':'.implode(',:',$fields);
@@ -39,7 +40,7 @@ try {
     foreach ($fields as $f) $st->bindValue(":$f", $data[$f]);
     $st->execute();
     $newId = (int)$pdo->lastInsertId();
-    out(['ok'=>true,'id'=>$newId,'mode'=>'insert']);
-  }
+    out(balp_to_utf8(['ok'=>true,'id'=>$newId,'mode'=>'insert']));
+}
 } catch (Throwable $e) { out(['error'=>$e->getMessage()],500); }
 

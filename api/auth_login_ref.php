@@ -53,11 +53,7 @@ try {
         $db_user = $CONFIG['db_user'] ?? getenv('BALP_DB_USER');
         $db_pass = $CONFIG['db_pass'] ?? getenv('BALP_DB_PASS');
         if (!$db_dsn) throw new Exception('DB DSN missing');
-        $pdo = new PDO($db_dsn, $db_user, $db_pass, [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4",
-        ]);
+        $pdo = new PDO($db_dsn, $db_user, $db_pass, balp_utf8_pdo_options());
     }
 
     // --- Načti uživatele ---
