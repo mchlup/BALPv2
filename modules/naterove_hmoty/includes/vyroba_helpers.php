@@ -1,6 +1,9 @@
 <?php
 require_once balp_project_root() . '/helpers.php';
-require_once __DIR__ . '/nh_helpers.php';
+$nhHelpersPath = __DIR__ . '/nh_helpers.php';
+if (is_file($nhHelpersPath)) {
+    require_once $nhHelpersPath;
+}
 
 if (!function_exists('nh_vyr_normalize_vp_digits')) {
     function nh_vyr_normalize_vp_digits(?string $value): ?string
