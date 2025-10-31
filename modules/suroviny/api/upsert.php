@@ -17,10 +17,15 @@ $respond = static function ($data, int $status = 200): void {
 $configFile = balp_project_root() . '/config/config.php';
 $CONFIG = [];
 if (file_exists($configFile)) {
-    $CONFIG = require $configFile;
-    if (!is_array($CONFIG)) {
-        $CONFIG = [];
+    $loaded = require $configFile;
+    if (is_array($loaded)) {
+        $CONFIG = $loaded;
+    } elseif (!is_array($CONFIG) && isset($GLOBALS['CONFIG']) && is_array($GLOBALS['CONFIG'])) {
+        $CONFIG = $GLOBALS['CONFIG'];
     }
+}
+if (!is_array($CONFIG)) {
+    $CONFIG = [];
 }
 
 $authConf = $CONFIG['auth'] ?? [];
