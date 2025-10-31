@@ -21,28 +21,23 @@ try {
 
     jwt_decode($token, $authConf['jwt_secret'] ?? 'change', true);
 
-    $id = (int)($_GET['id'] ?? 0);
-    if ($id <= 0) {
-        respond_json(['error' => 'missing id'], 400);
-    }
-
     $pdo = db();
 
-    $detail = nh_vyr_fetch_detail($pdo, $id);
-    $row = $detail['item'] ?? null;
-    if (!$row) {
-        respond_json(['error' => 'not found'], 404);
+    $now = new DateTimeImmutable('now');
+    $result = nh_vyr_next_vp_formatted($pdo, $now);
+    if ($result === null) {
+        respond_json([
+            'cislo_vp_digits' => null,
+            'cislo_vp' => null,
+            'year_prefix' => $now->format('y'),
+        ]);
     }
 
-    $row = nh_vyr_normalize_header_row($pdo, $row);
-    $lines = $detail['rows'] ?? [];
-    $tests = $detail['zkousky'] ?? [];
-
-    echo json_encode([
-        'item' => $row,
-        'rows' => $lines,
-        'zkousky' => $tests,
-    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+    respond_json([
+        'cislo_vp_digits' => $result['digits'] ?? null,
+        'cislo_vp' => $result['formatted'] ?? null,
+        'year_prefix' => $now->format('y'),
+    ]);
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode(['error' => $e->getMessage()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);

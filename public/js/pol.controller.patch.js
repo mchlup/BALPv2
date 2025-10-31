@@ -39,7 +39,7 @@
   window.__POL_CONTROLLER_INSTALLED__ = true;
 
   const pol = {
-    state:{search:'',limit:50,offset:0,sort_col:'id',sort_dir:'ASC',total:0,olej:'',platnost:''},
+    state:{search:'',limit:50,offset:0,sort_col:'cislo',sort_dir:'ASC',total:0,olej:'',platnost:''},
     els:{},
     ready:false,
     grabDom(){
@@ -75,7 +75,7 @@
       }
       if (this.els.btnReset) {
         this.els.btnReset.addEventListener('click', ()=>{
-          this.state = {search:'',limit:50,offset:0,sort_col:'id',sort_dir:'ASC',total:0,olej:'',platnost:''};
+          this.state = {search:'',limit:50,offset:0,sort_col:'cislo',sort_dir:'ASC',total:0,olej:'',platnost:''};
           if (this.els.search) this.els.search.value='';
           if (this.els.limit) this.els.limit.value='50';
           if (this.els.olej) this.els.olej.value='';
@@ -127,7 +127,7 @@
       this.els.tbody.innerHTML='';
       for (const r of items){
         const tr=document.createElement('tr');
-        tr.innerHTML = `<td>${safeCell(r.id)}</td><td>${safeCell(r.cislo)}</td><td>${safeCell(r.nazev)}</td><td>${safeCell(r.sh)}</td><td>${safeCell(r.okp)}</td><td>${safeCell(r.olej)}</td><td>${safeCell(r.pozn)}</td><td>${safeDate(r.dtod)}</td><td>${safeDate(r.dtdo)}</td>`;
+        tr.innerHTML = `<td>${safeCell(r.cislo)}</td><td>${safeCell(r.nazev)}</td><td>${safeCell(r.sh)}</td><td>${safeCell(r.okp)}</td><td>${safeCell(r.olej)}</td><td>${safeCell(r.pozn)}</td><td>${safeDate(r.dtod)}</td><td>${safeDate(r.dtdo)}</td>`;
         this.els.tbody.appendChild(tr);
       }
     }

@@ -4,7 +4,7 @@ require_once balp_api_path('jwt_helper.php');
 require_once balp_project_root() . '/helpers.php';
 balp_include_module_include('naterove_hmoty', 'helpers');
 balp_include_module_include('naterove_hmoty', 'vyroba_helpers');
-require_once __DIR__ . '/pdf_helpers.php';
+require_once balp_api_path('pdf_helpers.php');
 
 header('Content-Type: application/pdf');
 $filename = 'balp_vyrobni_prikaz_' . date('Ymd_His') . '.pdf';
@@ -45,8 +45,14 @@ try {
         exit;
     }
 
-    $cisloVp = nh_vyr_format_vp($row['cislo_vp'] ?? null) ?? ($row['cislo_vp'] ?? '');
+    $row = nh_vyr_normalize_header_row($pdo, $row);
+    $cisloVp = $row['cislo_vp'] ?? '';
     $datum = isset($row['datum_vyroby']) && $row['datum_vyroby'] ? substr((string)$row['datum_vyroby'], 0, 10) : '';
+    $vyrobit = $row['vyrobit_g'] ?? '';
+    if (is_float($vyrobit) || is_int($vyrobit)) {
+        $vyrobitFormatted = number_format((float)$vyrobit, 3, ',', ' ');
+        $vyrobit = rtrim(rtrim($vyrobitFormatted, '0'), ',');
+    }
 
     $lines = [];
     $lines[] = 'Výrobní příkaz NH';
@@ -55,7 +61,7 @@ try {
     $lines[] = 'Datum výroby: ' . $datum;
     $lines[] = 'Číslo NH: ' . ($row['cislo_nh'] ?? '');
     $lines[] = 'Název NH: ' . ($row['nazev_nh'] ?? '');
-    $lines[] = 'Vyrobit (g): ' . ($row['vyrobit_g'] ?? '');
+    $lines[] = 'Vyrobit (g): ' . ($vyrobit !== '' ? $vyrobit : '');
     $lines[] = 'Poznámka: ' . ($row['poznamka'] ?? '');
 
     $recipe = $detail['rows'] ?? [];
@@ -64,8 +70,14 @@ try {
     if ($recipe) {
         foreach ($recipe as $item) {
             $qty = $item['mnozstvi'] ?? '';
-            if (is_numeric($qty)) {
-                $qty = (string)+$qty;
+            if (is_float($qty) || is_int($qty)) {
+                $qtyFormatted = number_format((float)$qty, 3, ',', ' ');
+                $qty = rtrim(rtrim($qtyFormatted, '0'), ',');
+            }
+            $nav = $item['navazit'] ?? '';
+            if (is_float($nav) || is_int($nav)) {
+                $navFormatted = number_format((float)$nav, 3, ',', ' ');
+                $nav = rtrim(rtrim($navFormatted, '0'), ',');
             }
             $type = $item['typ'] ?? '';
             $code = trim((string)($item['cislo'] ?? ''));
@@ -81,7 +93,17 @@ try {
             if ($name !== '') {
                 $label .= ' – ' . $name;
             }
-            $lines[] = '  ' . $label . ($qty !== '' ? ': ' . $qty . ' g/kg' : '');
+            $amountParts = [];
+            if ($qty !== '') {
+                $amountParts[] = $qty . ' g/kg';
+            }
+            if ($nav !== '') {
+                $amountParts[] = $nav . ' g';
+            }
+            if ($amountParts) {
+                $label .= ': ' . implode(', ', $amountParts);
+            }
+            $lines[] = '  ' . $label;
         }
     } else {
         $lines[] = '  — žádné položky —';
@@ -92,19 +114,19 @@ try {
     $lines[] = 'Laboratorní zkoušky:';
     if ($tests) {
         foreach ($tests as $test) {
-            $name = $test['nazev'] ?? '';
-            $value = $test['hodnota'] ?? '';
-            $unit = $test['jednotka'] ?? '';
-            $note = $test['poznamka'] ?? '';
-            $line = '  ' . ($name !== '' ? $name : 'Parametr');
-            if ($value !== '') {
-                $line .= ': ' . $value;
-                if ($unit !== '') {
-                    $line .= ' ' . $unit;
-                }
+            $date = $test['datum'] ?? '';
+            $type = $test['typ'] ?? '';
+            $resultText = $test['vysledek'] ?? '';
+            $labelParts = [];
+            if ($date !== '') {
+                $labelParts[] = $date;
             }
-            if ($note !== '') {
-                $line .= ' (' . $note . ')';
+            if ($type !== '') {
+                $labelParts[] = $type;
+            }
+            $line = '  ' . ($labelParts ? implode(' – ', $labelParts) : 'Parametr');
+            if ($resultText !== '') {
+                $line .= ': ' . $resultText;
             }
             $lines[] = $line;
         }
