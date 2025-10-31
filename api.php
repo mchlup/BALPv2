@@ -14,11 +14,30 @@ if ($action==='_meta_tables'){
 }
 if ($action==='_modules'){
   $modules = array_values(array_map(function(array $module){
+    $uiTabs = [];
+    foreach (($module['ui']['tabs'] ?? []) as $tab) {
+        $uiTabs[] = [
+            'slug' => $tab['slug'] ?? ($module['slug'] . '-tab'),
+            'label' => $tab['label'] ?? ($tab['slug'] ?? $module['name'] ?? $module['slug']),
+            'order' => $tab['order'] ?? 100,
+            'view' => $tab['view'] ?? null,
+            'tab_id' => $tab['tab_id'] ?? null,
+            'pane_id' => $tab['pane_id'] ?? null,
+        ];
+    }
+    $uiAssets = [
+        'css' => array_values($module['ui']['assets']['css'] ?? []),
+        'js' => array_values($module['ui']['assets']['js'] ?? []),
+    ];
     return [
       'slug' => $module['slug'],
       'name' => $module['name'] ?? $module['slug'],
       'description' => $module['description'] ?? '',
       'assets' => $module['assets'] ?? [],
+      'ui' => [
+        'tabs' => $uiTabs,
+        'assets' => $uiAssets,
+      ],
     ];
   }, balp_modules_registry()));
   respond_json(['modules' => $modules]);

@@ -13,9 +13,21 @@ return [
         'filters' => __DIR__ . '/api/filters.php',
         'search' => __DIR__ . '/api/search.php',
     ],
-    'assets' => [
-        'js' => [
-            'public/js/app.js',
+    'ui' => [
+        'tabs' => [
+            [
+                'slug' => 'suroviny',
+                'label' => 'Suroviny',
+                'order' => 20,
+                'view' => 'modules/suroviny/tab.html',
+                'tab_id' => 'tab-suroviny',
+                'pane_id' => 'pane-suroviny',
+            ],
+        ],
+        'assets' => [
+            'js' => [
+                'js/sur.controller.js',
+            ],
         ],
     ],
 ];

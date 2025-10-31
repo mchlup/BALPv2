@@ -16,14 +16,26 @@ return [
         'vyrobni_prikaz' => __DIR__ . '/api/vyrobni_prikaz.php',
         'search' => __DIR__ . '/api/search.php',
     ],
-    'assets' => [
-        'js' => [
-            'public/js/pol.controller.patch.js',
-            'public/js/pol.editor.js',
-            'public/js/pol.row-modal.js',
-            'public/js/pol.row-open.js',
-            'public/js/pol.vp.core.js',
-            'public/js/pol.vyrobni-prikaz.js',
+    'ui' => [
+        'tabs' => [
+            [
+                'slug' => 'polotovary',
+                'label' => 'Polotovary',
+                'order' => 10,
+                'view' => 'modules/polotovary/tab.html',
+                'tab_id' => 'tab-pol',
+                'pane_id' => 'pane-pol',
+            ],
+        ],
+        'assets' => [
+            'js' => [
+                'js/pol.controller.patch.js',
+                'js/pol.vyrobni-prikaz.js',
+                'js/pol.row-open.js',
+                'js/pol.vp.core.js',
+                'js/pol.editor.js',
+                'js/pol.row-modal.js',
+            ],
         ],
     ],
 ];

@@ -14,8 +14,13 @@
   };
   const safeCell = (value) => escapeHtml(value ?? '');
 
+  const onReady = (fn) => {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+    else fn();
+  };
+
   /* ---------- Tlačítko "Rozpad (agreg.)" v hlavičce modálu ---------- */
-  document.addEventListener('DOMContentLoaded', () => {
+  onReady(() => {
     const hdr = document.querySelector('#vpModal .modal-header');
     if (!hdr || hdr.querySelector('#vp-recurse')) return;
     const btn = document.createElement('button');
@@ -26,7 +31,7 @@
     hdr.appendChild(btn);
   });
 
-  document.addEventListener('DOMContentLoaded', () => {
+  onReady(() => {
     const usersBtn = document.getElementById('vp-users-link');
     if (usersBtn) {
       usersBtn.addEventListener('click', () => {

@@ -1,0 +1,123 @@
+<div class="module-nh-vyroba">
+  <div class="filter-toolbar row g-2 align-items-end mb-3">
+    <div class="col-6 col-md-3 col-xl-2">
+      <label class="form-label" for="nh-vyr-od">Číslo VP od</label>
+      <input type="text" class="form-control" id="nh-vyr-od" placeholder="00-0000" inputmode="numeric" maxlength="7">
+    </div>
+    <div class="col-6 col-md-3 col-xl-2">
+      <label class="form-label" for="nh-vyr-do">Číslo VP do</label>
+      <input type="text" class="form-control" id="nh-vyr-do" placeholder="99-9999" inputmode="numeric" maxlength="7">
+    </div>
+    <div class="col-12 col-md-3 col-xl-2">
+      <label class="form-label" for="nh-vyr-limit">Záznamů na stránku</label>
+      <select id="nh-vyr-limit" class="form-select">
+        <option>10</option>
+        <option>25</option>
+        <option selected>50</option>
+        <option>100</option>
+      </select>
+    </div>
+    <div class="col-12 col-lg-auto ms-lg-auto">
+      <div class="toolbar-actions d-flex flex-wrap gap-2">
+        <button type="button" id="nh-vyr-submit" class="btn btn-primary">Zobrazit</button>
+        <button type="button" id="nh-vyr-reset" class="btn btn-outline-secondary">Reset</button>
+        <button type="button" id="nh-vyr-export-csv" class="btn btn-outline-secondary">Export CSV</button>
+        <button type="button" id="nh-vyr-export-pdf" class="btn btn-outline-secondary">Export PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-sm table-striped align-middle" id="nh-vyr-table">
+      <thead>
+        <tr>
+          <th scope="col" data-col="id" class="sortable text-end">ID</th>
+          <th scope="col" data-col="cislo_vp" class="sortable">Číslo VP</th>
+          <th scope="col" data-col="datum_vyroby" class="sortable">Datum výroby</th>
+          <th scope="col" data-col="cislo_nh" class="sortable">Číslo NH</th>
+          <th scope="col" data-col="nazev_nh" class="sortable">Název</th>
+          <th scope="col" data-col="vyrobit_g" class="sortable text-end">Vyrobit (g)</th>
+          <th scope="col">Poznámka</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center mt-2">
+    <div id="nh-vyr-meta" class="small text-muted">—</div>
+    <div class="btn-group" role="group">
+      <button class="btn btn-outline-secondary" id="nh-vyr-prev">&laquo; Předchozí</button>
+      <button class="btn btn-outline-secondary" id="nh-vyr-next">Další &raquo;</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="nhVyrModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Detail výrobního příkazu</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zavřít"></button>
+      </div>
+      <div class="modal-body">
+        <dl class="row mb-3">
+          <dt class="col-sm-4">Výrobní příkaz</dt>
+          <dd class="col-sm-8 d-flex align-items-center gap-2">
+            <a href="#" id="nh-vyr-detail-vp" class="fw-semibold text-decoration-none">—</a>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="nh-vyr-detail-copy">Kopírovat</button>
+          </dd>
+          <dt class="col-sm-4">Datum výroby</dt>
+          <dd class="col-sm-8" id="nh-vyr-detail-datum">—</dd>
+          <dt class="col-sm-4">Číslo NH</dt>
+          <dd class="col-sm-8" id="nh-vyr-detail-nh">—</dd>
+          <dt class="col-sm-4">Název</dt>
+          <dd class="col-sm-8" id="nh-vyr-detail-nazev">—</dd>
+          <dt class="col-sm-4">Množství</dt>
+          <dd class="col-sm-8" id="nh-vyr-detail-mnozstvi">—</dd>
+          <dt class="col-sm-4">Poznámka</dt>
+          <dd class="col-sm-8" id="nh-vyr-detail-poznamka">—</dd>
+        </dl>
+
+        <h6 class="fw-semibold">Receptura</h6>
+        <div class="table-responsive mb-3">
+          <table class="table table-sm table-striped mb-0" id="nh-vyr-detail-rec-table">
+            <thead>
+              <tr>
+                <th>Typ</th>
+                <th>Kód</th>
+                <th>Název</th>
+                <th class="text-end">g / kg</th>
+                <th class="text-end">Navážit (g)</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div class="text-muted small py-2" id="nh-vyr-detail-rec-empty">Žádné položky.</div>
+        </div>
+
+        <h6 class="fw-semibold">Zkušební karty</h6>
+        <div class="table-responsive mb-3">
+          <table class="table table-sm table-striped mb-0" id="nh-vyr-detail-zk-table">
+            <thead>
+              <tr>
+                <th>Datum</th>
+                <th>Typ</th>
+                <th>Výsledek</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+          <div class="text-muted small py-2" id="nh-vyr-detail-zk-empty">Žádné záznamy.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="btn-group me-auto" role="group">
+          <button type="button" class="btn btn-outline-secondary" id="nh-vyr-detail-export-csv">Export CSV</button>
+          <button type="button" class="btn btn-outline-secondary" id="nh-vyr-detail-export-pdf">Export PDF</button>
+        </div>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zavřít</button>
+      </div>
+    </div>
+  </div>
+</div>

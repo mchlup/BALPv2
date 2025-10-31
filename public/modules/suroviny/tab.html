@@ -1,0 +1,133 @@
+<div class="module-suroviny">
+  <div class="filter-toolbar row g-2 align-items-end mb-3">
+    <div class="col-12 col-lg-4">
+      <label for="sur-search" class="form-label">Vyhledat surovinu</label>
+      <input type="text" class="form-control" id="sur-search" placeholder="Zadejte část názvu nebo čísla…">
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <label class="form-label" for="sur-filter-olej">Filtrovat olej</label>
+      <select id="sur-filter-olej" class="form-select">
+        <option value="">Vše</option>
+        <option value="1">Jen olejové</option>
+        <option value="0">Bez oleje</option>
+      </select>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <label class="form-label" for="sur-filter-platnost">Platnost k datu</label>
+      <input type="date" class="form-control" id="sur-filter-platnost" placeholder="YYYY-MM-DD">
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <label class="form-label" for="sur-limit">Záznamů na stránku</label>
+      <select id="sur-limit" class="form-select">
+        <option>10</option>
+        <option>25</option>
+        <option selected>50</option>
+        <option>100</option>
+      </select>
+    </div>
+    <div class="col-12 col-lg-auto ms-lg-auto">
+      <div class="toolbar-actions d-flex flex-wrap gap-2">
+        <button type="button" id="sur-reset" class="btn btn-outline-secondary">Reset filtrů</button>
+        <button type="button" id="sur-export" class="btn btn-outline-secondary">Export CSV</button>
+        <button type="button" id="sur-new" class="btn btn-success">Nová surovina</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-sm table-hover table-striped align-middle" id="sur-table">
+      <thead>
+        <tr>
+          <th scope="col" data-col="id" class="sortable">ID</th>
+          <th scope="col" data-col="cislo" class="sortable">Číslo</th>
+          <th scope="col" data-col="nazev" class="sortable">Název</th>
+          <th scope="col" data-col="sh" class="sortable">SH</th>
+          <th scope="col" data-col="okp" class="sortable">OKP</th>
+          <th scope="col" data-col="olej" class="sortable">Olej</th>
+          <th scope="col">Pozn.</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center mt-2">
+    <div class="small text-muted" id="sur-summary">—</div>
+    <div class="btn-group" role="group">
+      <button class="btn btn-outline-secondary btn-sm" id="sur-prev">&laquo; Předchozí</button>
+      <button class="btn btn-outline-secondary btn-sm" id="sur-next">Další &raquo;</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="surModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Detail suroviny</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zavřít"></button>
+      </div>
+      <div class="modal-body">
+        <form id="sur-form" class="row g-3">
+          <div class="col-3">
+            <label class="form-label">ID</label>
+            <input type="number" class="form-control" id="f-id" disabled>
+          </div>
+          <div class="col-4">
+            <label class="form-label">Číslo</label>
+            <input type="text" class="form-control" id="f-cislo" disabled>
+          </div>
+          <div class="col-5">
+            <label class="form-label">Název</label>
+            <input type="text" class="form-control" id="f-nazev" disabled>
+          </div>
+          <div class="col-3">
+            <label class="form-label">SH</label>
+            <input type="number" step="0.001" class="form-control" id="f-sh" disabled>
+          </div>
+          <div class="col-3">
+            <label class="form-label">Sušina (sh)</label>
+            <input type="number" step="0.001" class="form-control" id="f-sus_sh" disabled>
+          </div>
+          <div class="col-3">
+            <label class="form-label">Sušina (hmot.)</label>
+            <input type="number" step="0.001" class="form-control" id="f-sus_hmot" disabled>
+          </div>
+          <div class="col-3">
+            <label class="form-label">Sušina (obj.)</label>
+            <input type="number" step="0.001" class="form-control" id="f-sus_obj" disabled>
+          </div>
+          <div class="col-3">
+            <label class="form-label">OKP</label>
+            <input type="number" step="0.001" class="form-control" id="f-okp" disabled>
+          </div>
+          <div class="col-3">
+            <label class="form-label">Olej</label>
+            <input type="number" class="form-control" id="f-olej" disabled>
+          </div>
+          <div class="col-6">
+            <label class="form-label">Poznámka</label>
+            <input type="text" class="form-control" id="f-pozn" disabled>
+          </div>
+          <div class="col-6">
+            <label class="form-label">Datum od (dtod)</label>
+            <input type="date" class="form-control" id="f-dtod" disabled>
+          </div>
+          <div class="col-6">
+            <label class="form-label">Datum do (dtdo)</label>
+            <input type="date" class="form-control" id="f-dtdo" disabled>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer justify-content-between">
+        <div class="text-muted small" id="sur-meta"></div>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-danger me-auto" id="btn-sur-delete">Smazat</button>
+          <button type="button" class="btn btn-outline-secondary" id="btn-sur-clone">Klonovat</button>
+          <button type="button" class="btn btn-outline-primary" id="btn-sur-edit">Editovat</button>
+          <button type="button" class="btn btn-primary d-none" id="btn-sur-save">Uložit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

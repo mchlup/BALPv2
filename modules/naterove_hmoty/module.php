@@ -19,10 +19,30 @@ return [
         'helpers' => __DIR__ . '/includes/helpers.php',
         'vyroba_helpers' => __DIR__ . '/includes/vyroba_helpers.php',
     ],
-    'assets' => [
-        'js' => [
-            'public/js/nh.controller.js',
-            'public/js/nh.vyr.controller.js',
+    'ui' => [
+        'tabs' => [
+            [
+                'slug' => 'nh',
+                'label' => 'NH – Nátěrové hmoty',
+                'order' => 30,
+                'view' => 'modules/naterove_hmoty/list.html',
+                'tab_id' => 'tab-nh',
+                'pane_id' => 'pane-nh',
+            ],
+            [
+                'slug' => 'nh-vyroba',
+                'label' => 'Výrobní příkazy NH',
+                'order' => 40,
+                'view' => 'modules/naterove_hmoty/vyroba.html',
+                'tab_id' => 'tab-nh-vyr',
+                'pane_id' => 'pane-nh-vyr',
+            ],
+        ],
+        'assets' => [
+            'js' => [
+                'js/nh.controller.js',
+                'js/nh.vyr.controller.js',
+            ],
         ],
     ],
 ];
