@@ -4,6 +4,7 @@ require_once balp_api_path('jwt_helper.php');
 require_once __DIR__ . '/filters.php';
 
 header('Content-Type: text/csv; charset=utf-8');
+header('Content-Language: cs');
 $filename = 'balp_sur_' . date('Ymd_His') . '.csv';
 header('Content-Disposition: attachment; filename="' . $filename . '"');
 
@@ -21,7 +22,7 @@ try {
   $db_user = $CONFIG['db_user'] ?? getenv('BALP_DB_USER');
   $db_pass = $CONFIG['db_pass'] ?? getenv('BALP_DB_PASS');
   if (!$db_dsn) throw new Exception('DB DSN missing');
-  $pdo = new PDO($db_dsn, $db_user, $db_pass, [ PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC, PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4" ]);
+  $pdo = new PDO($db_dsn, $db_user, $db_pass, balp_utf8_pdo_options());
 } catch (Exception $e) { http_response_code(500); echo 'error: ' . $e->getMessage(); exit; }
 
 $params = [];
@@ -44,7 +45,7 @@ if ($limit_sql) {
   $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 }
 $stmt->execute();
-$rows = $stmt->fetchAll();
+$rows = balp_to_utf8($stmt->fetchAll());
 
 $out = fopen('php://output', 'w');
 fputcsv($out, ['ID', 'Číslo', 'Název', 'SH', 'Sušina (sh)', 'Sušina (hmot)', 'OKP', 'Olej', 'Poznámka', 'Platnost od', 'Platnost do'], ';');

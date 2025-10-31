@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
+header('Content-Language: cs');
 require_once balp_api_path('auth_helpers.php');
 require_once balp_api_path('jwt_helper.php');
 
@@ -11,7 +12,7 @@ try {
   $JWT_SECRET = $CONFIG['auth']['jwt_secret']
     ?? ($CONFIG['jwt_secret'] ?? (getenv('BALP_JWT_SECRET') ?: 'change_this_secret'));
   $token = balp_get_bearer_token();
-  if (!$token) { http_response_code(401); echo json_encode(['error'=>'missing token'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE); exit; }
+  if (!$token) { http_response_code(401); echo json_encode(balp_to_utf8(['error'=>'missing token']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE); exit; }
   jwt_decode($token, $JWT_SECRET, true);
 
   $db_dsn  = $CONFIG['db_dsn']  ?? getenv('BALP_DB_DSN');
@@ -19,15 +20,11 @@ try {
   $db_pass = $CONFIG['db_pass'] ?? getenv('BALP_DB_PASS');
   if (!$db_dsn) throw new Exception('DB DSN missing');
 
-  $pdo = new PDO($db_dsn, $db_user, $db_pass, [
-    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4",
-  ]);
+  $pdo = new PDO($db_dsn, $db_user, $db_pass, balp_utf8_pdo_options());
 
   $q = trim((string)($_GET['q'] ?? ''));
   $limit = max(5, min(50, (int)($_GET['limit'] ?? 15)));
-  if ($q === '') { echo json_encode(['items'=>[]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE); exit; }
+  if ($q === '') { echo json_encode(balp_to_utf8(['items'=>[]]), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE); exit; }
 
   $stmt = $pdo->prepare("
     SELECT id, cislo, nazev
@@ -41,10 +38,10 @@ try {
   $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
   $stmt->execute();
 
-  echo json_encode(['items'=>$stmt->fetchAll()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+  echo json_encode(balp_to_utf8(['items'=>$stmt->fetchAll()]), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
 
 } catch (Throwable $e) {
   http_response_code(500);
-  echo json_encode(['error'=>$e->getMessage()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+  echo json_encode(balp_to_utf8(['error'=>$e->getMessage()]), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
 }
 

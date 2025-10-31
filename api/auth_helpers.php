@@ -3,6 +3,8 @@
 // Robustly extract Bearer token from Authorization header, HTTP_AUTHORIZATION (FPM/nginx),
 // cookie 'balp_token', or GET param 'token'.
 
+require_once __DIR__ . '/../helpers.php';
+
 if (!function_exists('balp_getallheaders')) {
   function balp_getallheaders() {
     if (function_exists('getallheaders')) return getallheaders();
@@ -35,6 +37,7 @@ function balp_get_bearer_token() {
 function balp_send_json($data, $status=200) {
   http_response_code($status);
   header('Content-Type: application/json; charset=utf-8');
-  echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+  header('Content-Language: cs');
+  echo json_encode(balp_to_utf8($data), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
   exit;
 }
