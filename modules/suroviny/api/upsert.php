@@ -107,12 +107,17 @@ foreach (['dtod', 'dtdo'] as $dateField) {
     }
 }
 
-if ($id === null && $data['dtod'] === null) {
-    $data['dtod'] = (new DateTimeImmutable('now'))->format('Y-m-d');
+if ($data['dtod'] === null) {
+    $now = new DateTimeImmutable('now');
+    $data['dtod'] = $now->format('Y-m-d');
 }
 
 if ($data['dtod'] !== null && $data['dtdo'] !== null && $data['dtod'] > $data['dtdo']) {
     $respond(['error' => 'Platnost do musí být později než platnost od.'], 422);
+}
+
+if ($data['pozn'] === null) {
+    $data['pozn'] = '';
 }
 
 try {
