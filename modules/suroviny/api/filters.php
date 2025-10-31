@@ -7,7 +7,7 @@ declare(strict_types=1);
  * Normalize column name for ORDER BY – fallback to 'nazev'.
  */
 function sur_normalize_sort_column(?string $column): string {
-    $allowed = ['id', 'cislo', 'nazev', 'sh', 'okp', 'olej', 'dtod', 'dtdo'];
+    $allowed = ['id', 'cislo', 'nazev', 'sh', 'sus_sh', 'sus_hmot', 'okp', 'olej', 'dtod', 'dtdo'];
     $column = $column ? strtolower($column) : '';
     foreach ($allowed as $allow) {
         if ($column === strtolower($allow)) {

@@ -39,7 +39,7 @@ try {
   if ($id <= 0) throw new Exception('missing id');
 
   // Hlava polotovaru
-  $q = $pdo->prepare("SELECT id, cislo, nazev, sh, sus_sh, sus_hmot, sus_obj, okp, pozn
+  $q = $pdo->prepare("SELECT id, cislo, nazev, sh, sus_sh, sus_hmot, okp, pozn
                       FROM balp_pol WHERE id=:id LIMIT 1");
   $q->execute([':id'=>$id]);
   $head = $q->fetch();
@@ -50,7 +50,7 @@ try {
     SELECT
       rec.techpor,
       s.cislo, s.nazev,
-      s.sh, s.sus_hmot, s.sus_obj,
+      s.sh, s.sus_hmot,
       rec.gkg,
       ROUND(rec.gkg * :kg, 2) AS navazit_g,
       s.dtod AS platnost_od,
@@ -71,7 +71,6 @@ try {
       p.cislo, p.nazev,
       p.sh,
       NULL AS sus_hmot,
-      NULL AS sus_obj,
       rec.gkg,
       ROUND(rec.gkg * :kg, 2) AS navazit_g,
       p.dtod AS platnost_od,

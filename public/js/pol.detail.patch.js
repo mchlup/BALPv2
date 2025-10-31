@@ -54,7 +54,6 @@
     $('#pol-sh').value = r.sh ?? '';
     $('#pol-sus_sh').value = r.sus_sh ?? '';
     $('#pol-sus_hmot').value = r.sus_hmot ?? '';
-    $('#pol-sus_obj').value = r.sus_obj ?? '';
     $('#pol-okp').value = r.okp ?? '';
     $('#pol-kvn').value = r.kvn ?? '';
     $('#pol-olej').value = r.olej ?? '';
@@ -71,7 +70,6 @@
       sh: $('#pol-sh').value.trim() || null,
       sus_sh: $('#pol-sus_sh').value.trim() || null,
       sus_hmot: $('#pol-sus_hmot').value.trim() || null,
-      sus_obj: $('#pol-sus_obj').value.trim() || null,
       okp: $('#pol-okp').value.trim() || null,
       kvn: $('#pol-kvn').value.trim() || null,
       olej: $('#pol-olej').value.trim() || null,
