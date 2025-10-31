@@ -83,14 +83,14 @@
       // robustně přečteme potenciální názvy sloupců
       const id   = r.id ?? r.ID ?? r.Id ?? '';
       const code = r.kod ?? r.code ?? r.cislo ?? r.CISLO ?? r.CODE ?? '';
-      const vt   = r.cislo_vt ?? r.cislo_vp ?? r.cisloVP ?? r.vp ?? r.vp_cislo ?? '';
+      const vp   = r.cislo_vp ?? r.cislo_vt ?? r.cisloVP ?? r.vp ?? r.vp_cislo ?? '';
       const name = r.nazev ?? r.name ?? r.NAZEV ?? r.NAME ?? '';
       const cat  = r.kategorie_id ?? r.category_id ?? r.kategorie ?? r.CAT ?? '';
       const dtod = r.dtod ?? r.DTOD ?? '';
       const dtdo = r.dtdo ?? r.DTDO ?? '';
       const idCell = safeCell(id);
       const codeCell = safeCell(code);
-      const vpCell = safeCell(vt);
+      const vpCell = safeCell(vp);
       const nameCell = safeCell(name);
       const catCell = safeCell(cat);
       const dtodCell = safeDate(dtod);
@@ -702,7 +702,7 @@
     const set = (k, v) => { if (f[k]) f[k].value = (v ?? ''); };
     set('id', row.id ?? '');
     set('kod', row.kod ?? row.code ?? row.cislo ?? '');
-    set('cislo_vt', row.cislo_vt ?? row.cislo_vp ?? row.cisloVP ?? row.vp ?? row.vp_cislo ?? '');
+    set('cislo_vt', row.cislo_vp ?? row.cislo_vt ?? row.cisloVP ?? row.vp ?? row.vp_cislo ?? '');
     set('nazev', row.nazev ?? row.name ?? '');
     set('kategorie_id', row.kategorie_id ?? row.kategorie ?? '');
     set('pozn', row.pozn ?? '');
@@ -724,6 +724,9 @@
       dtod: read('dtod'),
       dtdo: read('dtdo'),
     };
+    if (payload.cislo_vt !== null && payload.cislo_vt !== undefined) {
+      payload.cislo_vp = payload.cislo_vt;
+    }
     if (isCreating && Array.isArray(draftRecipe) && draftRecipe.length) {
       payload.recipe_items = draftRecipe.map((item, index) => ({
         typ: item.typ || null,

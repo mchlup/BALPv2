@@ -24,8 +24,9 @@ try {
     balp_ensure_nh_table($pdo);
     $nhTable = sql_quote_ident(balp_nh_table_name());
     $nhAlias = 'nh';
-    $vtExpr = balp_nh_vp_expression($pdo, $nhAlias);
-    $hasCisloVt = strtoupper($vtExpr) !== 'NULL';
+    $vpExpr = balp_nh_vp_expression($pdo, $nhAlias);
+    $hasVpExpr = strtoupper($vpExpr) !== 'NULL';
+    $hasCisloVtColumn = balp_nh_has_column($pdo, 'cislo_vt');
 
     $limit = max(1, min(200, (int)($_GET['limit'] ?? 50)));
     $offset = max(0, (int)($_GET['offset'] ?? 0));
@@ -53,8 +54,13 @@ try {
     if ($hasCategory) {
         $sortColumns['kategorie_id'] = $katCol;
     }
-    if ($hasCisloVt) {
-        $sortColumns['cislo_vt'] = sql_quote_ident('cislo_vt');
+    if ($hasVpExpr) {
+        $sortColumns['cislo_vp'] = '(' . $vpExpr . ')';
+    }
+    if ($hasCisloVtColumn) {
+        $sortColumns['cislo_vt'] = $nhAlias . '.' . sql_quote_ident('cislo_vt');
+    } elseif ($hasVpExpr) {
+        $sortColumns['cislo_vt'] = '(' . $vpExpr . ')';
     }
     if (!isset($sortColumns[$sortCol])) {
         $sortCol = 'cislo';
@@ -93,8 +99,8 @@ try {
             "$nazevCol LIKE :search",
             "$poznCol LIKE :search",
         ];
-        if ($hasCisloVt) {
-            $searchParts[] = '(' . $vtExpr . ') LIKE :search';
+        if ($hasVpExpr) {
+            $searchParts[] = '(' . $vpExpr . ') LIKE :search';
         }
         $where[] = '(' . implode(' OR ', $searchParts) . ')';
     }
@@ -128,21 +134,26 @@ try {
     $countStmt->execute();
     $total = (int)$countStmt->fetchColumn();
 
-    $vtSelect = $hasCisloVt
-        ? '(' . $vtExpr . ') AS ' . sql_quote_ident('cislo_vt')
-        : 'NULL AS ' . sql_quote_ident('cislo_vt');
-    $kategorieSelect = $hasCategory
-        ? $katCol . ' AS ' . sql_quote_ident('kategorie_id')
-        : 'NULL AS ' . sql_quote_ident('kategorie_id');
-    $sql = 'SELECT '
-        . "$idCol AS id, "
-        . "$cisloCol AS cislo, "
-        . "$vtSelect, "
-        . "$nazevCol AS nazev, "
-        . "$poznCol AS pozn, "
-        . "$dtodCol AS dtod, "
-        . "$dtdoCol AS dtdo, "
-        . "$kategorieSelect FROM $nhTable AS $nhAlias $whereSql ORDER BY $orderBy $sortDir LIMIT :limit OFFSET :offset";
+    $vpSelect = $hasVpExpr
+        ? '(' . $vpExpr . ')'
+        : 'NULL';
+    $selectParts = [
+        "$idCol AS id",
+        "$cisloCol AS cislo",
+        $vpSelect . ' AS ' . sql_quote_ident('cislo_vp'),
+        ($hasCisloVtColumn
+            ? $nhAlias . '.' . sql_quote_ident('cislo_vt') . ' AS ' . sql_quote_ident('cislo_vt')
+            : $vpSelect . ' AS ' . sql_quote_ident('cislo_vt')),
+        "$nazevCol AS nazev",
+        "$poznCol AS pozn",
+        "$dtodCol AS dtod",
+        "$dtdoCol AS dtdo",
+        ($hasCategory
+            ? $katCol . ' AS ' . sql_quote_ident('kategorie_id')
+            : 'NULL AS ' . sql_quote_ident('kategorie_id')),
+    ];
+    $sql = 'SELECT ' . implode(', ', $selectParts)
+        . " FROM $nhTable AS $nhAlias $whereSql ORDER BY $orderBy $sortDir LIMIT :limit OFFSET :offset";
     $stmt = $pdo->prepare($sql);
     foreach ($params as $k => $v) {
         $stmt->bindValue($k, $v);
@@ -160,11 +171,17 @@ try {
         } elseif (!is_int($row['kategorie_id'])) {
             $row['kategorie_id'] = (int)$row['kategorie_id'];
         }
-        if (!array_key_exists('cislo_vt', $row)) {
+        if (array_key_exists('cislo_vt', $row) && $row['cislo_vt'] !== null && $row['cislo_vt'] !== '') {
+            $row['cislo_vt'] = trim((string)$row['cislo_vt']);
+        } else {
             $row['cislo_vt'] = null;
         }
-        if (!array_key_exists('cislo_vp', $row)) {
+        if (array_key_exists('cislo_vp', $row) && $row['cislo_vp'] !== null && $row['cislo_vp'] !== '') {
+            $row['cislo_vp'] = trim((string)$row['cislo_vp']);
+        } elseif ($row['cislo_vt'] !== null && $row['cislo_vt'] !== '') {
             $row['cislo_vp'] = $row['cislo_vt'];
+        } else {
+            $row['cislo_vp'] = null;
         }
     }
     unset($row);
