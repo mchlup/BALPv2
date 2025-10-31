@@ -383,8 +383,6 @@
     setMeta(previousMeta);
   }
 
-    }
-  }
 
   if (el.detail.copy && el.detail.vp) {
     el.detail.copy.addEventListener('click', async () => {
