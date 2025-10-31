@@ -35,7 +35,7 @@ sur_bind_params($stmt, $params);
 $stmt->execute();
 $total = (int)$stmt->fetchColumn();
 
-$sql = "SELECT id, cislo, nazev, sh, okp, olej, pozn, dtod, dtdo FROM balp_sur WHERE $where ORDER BY $sort_col $sort_dir LIMIT :limit OFFSET :offset";
+$sql = "SELECT id, cislo, nazev, sh, sus_sh, sus_hmot, okp, olej, pozn, dtod, dtdo FROM balp_sur WHERE $where ORDER BY $sort_col $sort_dir LIMIT :limit OFFSET :offset";
 $stmt = $pdo->prepare($sql);
 sur_bind_params($stmt, $params);
 $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);

@@ -169,6 +169,8 @@
           <td>${safeCell(r.cislo)}</td>
           <td>${safeCell(r.nazev)}</td>
           <td>${safeCell(r.sh)}</td>
+          <td>${safeCell(r.sus_sh)}</td>
+          <td>${safeCell(r.sus_hmot)}</td>
           <td>${safeCell(r.okp)}</td>
           <td>${safeCell(r.olej)}</td>
           <td>${safeCell(r.pozn)}</td>`;
