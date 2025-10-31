@@ -253,9 +253,9 @@
         };
         await apiFetch('/balp2/api/sur_upsert.php', { method: 'POST', body: JSON.stringify(payload) });
         modal?.hide();
-        showAlert('Uloženo.', 'success');
         state.offset = 0;
-        load(true);
+        await load(true);
+        showAlert('Uloženo.', 'success');
       } catch (e) {
         showAlert('Uložení selhalo: ' + e.message, 'danger');
       }
@@ -271,9 +271,9 @@
       try {
         await apiFetch('/balp2/api/sur_delete.php?id=' + encodeURIComponent(id), { method: 'POST' });
         modal?.hide();
-        showAlert('Smazáno.', 'success');
         state.offset = 0;
-        load(true);
+        await load(true);
+        showAlert('Smazáno.', 'success');
       } catch (e) {
         showAlert('Smazání selhalo: ' + e.message, 'danger');
       }
@@ -288,9 +288,9 @@
       try {
         await apiFetch('/balp2/api/sur_clone.php?id=' + encodeURIComponent(id), { method: 'POST' });
         modal?.hide();
-        showAlert('Vytvořena kopie.', 'success');
         state.offset = 0;
-        load(true);
+        await load(true);
+        showAlert('Vytvořena kopie.', 'success');
       } catch (e) {
         showAlert('Klonování selhalo: ' + e.message, 'danger');
       }
