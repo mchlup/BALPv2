@@ -90,7 +90,7 @@
       const dtdo = r.dtdo ?? r.DTDO ?? '';
       const idCell = safeCell(id);
       const codeCell = safeCell(code);
-      const vpCell = safeCell(vp);
+      const vpCell = safeCell(vt);
       const nameCell = safeCell(name);
       const catCell = safeCell(cat);
       const dtodCell = safeDate(dtod);
