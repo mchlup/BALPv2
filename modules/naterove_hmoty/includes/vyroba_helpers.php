@@ -39,7 +39,8 @@ if (!function_exists('nh_vyr_column_ref')) {
         if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $alias)) {
             $alias = 'v';
         }
-        return $alias . '.' . sql_quote_ident($column);
+
+        return sql_quote_ident($alias) . '.' . sql_quote_ident($column);
     }
 }
 
