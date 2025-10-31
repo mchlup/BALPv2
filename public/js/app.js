@@ -84,14 +84,15 @@
   const updateUiLoggedIn = (user) => {
     const info = $('#user-info');
     if (info) info.textContent = user?.username ? `Přihlášen: ${user.username}` : 'Přihlášeno';
-    $('#btn-login')?.classList.add('d-none');
-    $('#btn-logout')?.classList.remove('d-none');
+    $('#btn-login')?.classList?.add('d-none');
+    $('#btn-logout')?.classList?.remove('d-none');
   };
 
   const updateUiLoggedOut = () => {
-    $('#user-info')?.textContent = 'Nepřihlášen';
-    $('#btn-login')?.classList.remove('d-none');
-    $('#btn-logout')?.classList.add('d-none');
+    const elUserInfo = $('#user-info');
+    if (elUserInfo) elUserInfo.textContent = 'Nepřihlášen';
+    $('#btn-login')?.classList?.remove('d-none');
+    $('#btn-logout')?.classList?.add('d-none');
   };
 
   const ensureCss = (() => {
