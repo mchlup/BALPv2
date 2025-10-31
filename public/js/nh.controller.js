@@ -78,7 +78,23 @@
     if (el.meta) el.meta.textContent = text || '';
   }
 
+  function getTableBody() {
+    if (el.table && el.table.isConnected) {
+      return el.table;
+    }
+    const tb = document.querySelector('#nh-table tbody');
+    if (tb) {
+      el.table = tb;
+    }
+    return tb;
+  }
+
   function renderRows(items) {
+    const tableBody = getTableBody();
+    if (!tableBody) {
+      console.warn('NH: Tělo tabulky nebylo nalezeno, nelze vykreslit řádky.');
+      return;
+    }
     const rows = items.map(r => {
       // robustně přečteme potenciální názvy sloupců
       const id   = r.id ?? r.ID ?? r.Id ?? '';
@@ -106,7 +122,7 @@
       </tr>`;
     }).join('');
     const colSpan = 7;
-    el.table.innerHTML = rows || `<tr><td colspan="${colSpan}"><em>Žádné výsledky.</em></td></tr>`;
+    tableBody.innerHTML = rows || `<tr><td colspan="${colSpan}"><em>Žádné výsledky.</em></td></tr>`;
   }
 
   async function load(force=false) {
@@ -256,9 +272,9 @@
   if (el.tabBtn && el.tabBtn.classList.contains('active')) onShown({target: el.tabBtn});
 
   // Bind events pro NH detail modal
-  if (el.table) {
-    el.table.addEventListener('click', (e) => {
-      const tr = e.target.closest('tr');
+  if (el.pane) {
+    el.pane.addEventListener('click', (e) => {
+      const tr = e.target.closest('#nh-table tbody tr');
       if (!tr) return;
       const id = tr.getAttribute('data-id');
       if (id) openDetail(id);
