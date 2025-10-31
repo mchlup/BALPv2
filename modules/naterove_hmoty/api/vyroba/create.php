@@ -30,9 +30,16 @@ try {
     }
 
     $shadeId = (int)($payload['shade_id'] ?? $payload['idnhods'] ?? 0);
+    $nhId = (int)($payload['nh_id'] ?? ($payload['idnh'] ?? 0));
     $shade = null;
     if ($shadeId > 0) {
         $shade = nh_vyr_fetch_shade($pdo, $shadeId);
+    }
+    if (!$shade && $nhId > 0) {
+        $shade = nh_vyr_fetch_shade_by_nh_id($pdo, $nhId);
+        if ($shade) {
+            $shadeId = (int)($shade['id'] ?? 0);
+        }
     }
     if (!$shade) {
         $shade = nh_vyr_lookup_shade(

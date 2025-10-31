@@ -20,7 +20,8 @@
   const detailExportCsvEndpoint = apiBase + '/api/nh_vyr_detail_export_csv.php';
   const detailExportPdfEndpoint = apiBase + '/api/nh_vyr_detail_export_pdf.php';
   const createEndpoint = apiBase + '/api/nh_vyr_create.php';
-  const shadeSearchEndpoint = apiBase + '/api/nh_vyr_shades.php';
+  const nhSearchEndpoint = apiBase + '/api/nh_vyr_nh.php';
+  const nextVpEndpoint = apiBase + '/api/nh_vyr_next_vp.php';
 
   const storageKey = 'balp_token';
   const getToken = () => { try { return localStorage.getItem(storageKey) || ''; } catch { return ''; } };
@@ -95,9 +96,9 @@
     newCisloVp: document.getElementById('nh-vyr-new-cislo-vp'),
     newDatum: document.getElementById('nh-vyr-new-datum'),
     newMnozstvi: document.getElementById('nh-vyr-new-mnozstvi'),
-    newShade: document.getElementById('nh-vyr-new-shade'),
-    newShadeMeta: document.getElementById('nh-vyr-new-shade-meta'),
-    newShadeSuggestions: document.getElementById('nh-vyr-new-shade-suggestions'),
+    newNh: document.getElementById('nh-vyr-new-nh'),
+    newNhMeta: document.getElementById('nh-vyr-new-nh-meta'),
+    newNhSuggestions: document.getElementById('nh-vyr-new-nh-suggestions'),
     newPoznamka: document.getElementById('nh-vyr-new-poznamka'),
     detail: {
       vp: document.getElementById('nh-vyr-detail-vp'),
@@ -132,15 +133,16 @@
   };
 
   const createState = {
-    shadeId: null,
-    selectedShade: null,
+    nhId: null,
+    nhCode: null,
+    selectedNh: null,
     suggestions: [],
     suggestionsToken: 0,
   };
 
-  const defaultShadeMetaText = 'Vyberte odstín z nabídky.';
+  const defaultNhMetaText = 'Vyberte NH z nabídky.';
 
-  let shadeSearchTimer = null;
+  let nhSearchTimer = null;
 
   const formatVpInput = (input) => {
     if (!input) return;
@@ -179,107 +181,119 @@
     }
   }
 
-  function formatShadeLabel(item) {
+  function formatNhLabel(item) {
     if (!item) return '';
-    const base = item.cislo ?? '';
-    const nh = item.cislo_nh ?? '';
-    const ods = item.cislo_ods ?? '';
-    let code = base;
-    if (!code) {
-      if (nh && ods) code = `${nh}-${ods}`;
-      else if (nh) code = nh;
-      else if (ods) code = ods;
-    }
+    const code = item.cislo ?? item.cislo_nh ?? item.kod ?? '';
+    const alt = item.cislo_vt ?? item.cislo_vp ?? '';
+    const displayCode = code || alt;
     const name = item.nazev ?? item.nazev_nh ?? '';
-    return [code, name].filter(Boolean).join(' – ');
+    return [displayCode, name].filter(Boolean).join(' – ');
   }
 
-  function hideShadeSuggestions() {
-    if (!el.newShadeSuggestions) return;
-    el.newShadeSuggestions.classList.add('d-none');
-    el.newShadeSuggestions.innerHTML = '';
+  function hideNhSuggestions() {
+    if (!el.newNhSuggestions) return;
+    el.newNhSuggestions.classList.add('d-none');
+    el.newNhSuggestions.innerHTML = '';
   }
 
-  function renderShadeSuggestions(items) {
-    if (!el.newShadeSuggestions) return;
+  function renderNhSuggestions(items) {
+    if (!el.newNhSuggestions) return;
     if (!Array.isArray(items) || items.length === 0) {
-      hideShadeSuggestions();
+      hideNhSuggestions();
       return;
     }
     const html = items.map((item) => {
       const id = escapeHtml(String(item?.id ?? ''));
-      const label = escapeHtml(formatShadeLabel(item));
+      const label = escapeHtml(formatNhLabel(item));
       return `<button type="button" class="list-group-item list-group-item-action" data-id="${id}">${label}</button>`;
     }).join('');
-    el.newShadeSuggestions.innerHTML = html;
-    el.newShadeSuggestions.classList.remove('d-none');
+    el.newNhSuggestions.innerHTML = html;
+    el.newNhSuggestions.classList.remove('d-none');
   }
 
-  function setSelectedShade(item) {
-    createState.selectedShade = item || null;
-    createState.shadeId = item && item.id ? Number(item.id) : null;
-    if (el.newShade) {
-      el.newShade.value = formatShadeLabel(item);
+  function setSelectedNh(item) {
+    createState.selectedNh = item || null;
+    createState.nhId = item && item.id ? Number(item.id) : null;
+    createState.nhCode = item && item.cislo ? String(item.cislo) : (item && item.cislo_nh ? String(item.cislo_nh) : null);
+    if (el.newNh) {
+      el.newNh.value = formatNhLabel(item);
     }
-    if (el.newShadeMeta) {
-      el.newShadeMeta.textContent = createState.shadeId
-        ? `Vybrán odstín: ${formatShadeLabel(item)}`
-        : defaultShadeMetaText;
+    if (el.newNhMeta) {
+      el.newNhMeta.textContent = createState.nhCode
+        ? `Vybráno NH: ${formatNhLabel(item)}`
+        : defaultNhMetaText;
     }
-    hideShadeSuggestions();
+    hideNhSuggestions();
   }
 
-  async function fetchShadeSuggestions(query) {
+  async function fetchNhSuggestions(query) {
     const trimmed = (query || '').trim();
     createState.suggestionsToken += 1;
     const token = createState.suggestionsToken;
     if (!trimmed || trimmed.length < 2) {
       createState.suggestions = [];
-      if (el.newShadeMeta) el.newShadeMeta.textContent = defaultShadeMetaText;
-      hideShadeSuggestions();
+      createState.nhCode = null;
+      if (el.newNhMeta) el.newNhMeta.textContent = defaultNhMetaText;
+      hideNhSuggestions();
       return;
     }
     try {
-      if (el.newShadeMeta) el.newShadeMeta.textContent = 'Vyhledávám…';
+      if (el.newNhMeta) el.newNhMeta.textContent = 'Vyhledávám…';
       const params = new URLSearchParams({ q: trimmed, limit: '15' });
-      const data = await apiFetch(`${shadeSearchEndpoint}?${params.toString()}`);
+      const data = await apiFetch(`${nhSearchEndpoint}?${params.toString()}`);
       if (token !== createState.suggestionsToken) return;
       const items = Array.isArray(data?.items) ? data.items : [];
       createState.suggestions = items;
-      renderShadeSuggestions(items);
-      if (el.newShadeMeta) {
-        el.newShadeMeta.textContent = items.length ? defaultShadeMetaText : 'Nenalezeno, zkuste upravit hledání.';
+      renderNhSuggestions(items);
+      if (el.newNhMeta) {
+        el.newNhMeta.textContent = items.length ? defaultNhMetaText : 'Nenalezeno, zkuste upravit hledání.';
       }
     } catch (e) {
       if (token !== createState.suggestionsToken) return;
       createState.suggestions = [];
-      hideShadeSuggestions();
-      if (el.newShadeMeta) el.newShadeMeta.textContent = e?.message || 'Vyhledávání selhalo.';
+      hideNhSuggestions();
+      if (el.newNhMeta) el.newNhMeta.textContent = e?.message || 'Vyhledávání selhalo.';
     }
   }
 
   function resetNewForm() {
-    createState.shadeId = null;
-    createState.selectedShade = null;
+    createState.nhId = null;
+    createState.nhCode = null;
+    createState.selectedNh = null;
     createState.suggestions = [];
     createState.suggestionsToken += 1;
     if (el.newForm) el.newForm.reset();
     if (el.newCisloVp) el.newCisloVp.value = '';
     if (el.newDatum) el.newDatum.value = '';
     if (el.newMnozstvi) el.newMnozstvi.value = '';
-    if (el.newShade) el.newShade.value = '';
+    if (el.newNh) el.newNh.value = '';
     if (el.newPoznamka) el.newPoznamka.value = '';
-    if (el.newShadeMeta) el.newShadeMeta.textContent = defaultShadeMetaText;
+    if (el.newNhMeta) el.newNhMeta.textContent = defaultNhMetaText;
     setNewAlert('');
-    hideShadeSuggestions();
-    if (shadeSearchTimer) {
-      clearTimeout(shadeSearchTimer);
-      shadeSearchTimer = null;
+    hideNhSuggestions();
+    if (nhSearchTimer) {
+      clearTimeout(nhSearchTimer);
+      nhSearchTimer = null;
+    }
+  }
+
+  async function prefillNextVp() {
+    if (!el.newCisloVp) return;
+    try {
+      const data = await apiFetch(nextVpEndpoint);
+      const digits = data?.cislo_vp_digits ?? data?.cislo_vp_raw ?? null;
+      const formatted = data?.cislo_vp ?? (digits ? displayVp(digits) : null);
+      if (formatted) {
+        el.newCisloVp.value = formatted;
+      }
+    } catch (e) {
+      console.warn('Načtení čísla VP selhalo', e);
     }
   }
 
   function openNewModal() {
     resetNewForm();
+    prefillNextVp();
     if (newModal) {
       newModal.show();
       setTimeout(() => {
@@ -420,52 +434,53 @@
     el.newCisloVp.addEventListener('blur', () => formatVpInput(el.newCisloVp));
   }
 
-  if (el.newShadeSuggestions) {
-    el.newShadeSuggestions.addEventListener('click', (ev) => {
+  if (el.newNhSuggestions) {
+    el.newNhSuggestions.addEventListener('click', (ev) => {
       const btn = ev.target.closest('[data-id]');
       if (!btn) return;
       const id = btn.getAttribute('data-id');
       const item = createState.suggestions.find((entry) => String(entry?.id ?? '') === String(id ?? ''));
       if (item) {
-        setSelectedShade(item);
+        setSelectedNh(item);
       }
     });
   }
 
-  if (el.newShade) {
-    el.newShade.addEventListener('input', () => {
-      createState.shadeId = null;
-      createState.selectedShade = null;
+  if (el.newNh) {
+    el.newNh.addEventListener('input', () => {
+      createState.nhId = null;
+      createState.nhCode = null;
+      createState.selectedNh = null;
       setNewAlert('');
-      if (shadeSearchTimer) clearTimeout(shadeSearchTimer);
-      shadeSearchTimer = setTimeout(() => {
-        fetchShadeSuggestions(el.newShade.value || '');
+      if (nhSearchTimer) clearTimeout(nhSearchTimer);
+      nhSearchTimer = setTimeout(() => {
+        fetchNhSuggestions(el.newNh.value || '');
       }, 250);
     });
-    el.newShade.addEventListener('focus', () => {
+    el.newNh.addEventListener('focus', () => {
       if (createState.suggestions.length > 0) {
-        renderShadeSuggestions(createState.suggestions);
+        renderNhSuggestions(createState.suggestions);
       }
     });
-    el.newShade.addEventListener('keydown', (ev) => {
+    el.newNh.addEventListener('keydown', (ev) => {
       if (ev.key === 'Escape') {
-        hideShadeSuggestions();
+        hideNhSuggestions();
         return;
       }
       if (ev.key === 'Enter') {
         if (createState.suggestions.length > 0) {
           ev.preventDefault();
-          setSelectedShade(createState.suggestions[0]);
+          setSelectedNh(createState.suggestions[0]);
         }
       }
     });
   }
 
   document.addEventListener('click', (ev) => {
-    if (!el.newShade) return;
-    if (ev.target === el.newShade) return;
-    if (el.newShadeSuggestions && el.newShadeSuggestions.contains(ev.target)) return;
-    hideShadeSuggestions();
+    if (!el.newNh) return;
+    if (ev.target === el.newNh) return;
+    if (el.newNhSuggestions && el.newNhSuggestions.contains(ev.target)) return;
+    hideNhSuggestions();
   });
 
   if (el.newForm) {
@@ -477,8 +492,8 @@
         setNewAlert('Zadejte číslo VP ve formátu 00-0000.');
         return;
       }
-      if (!createState.shadeId) {
-        setNewAlert('Vyberte odstín NH.');
+      if (!createState.nhCode) {
+        setNewAlert('Vyberte NH z nabídky.');
         return;
       }
       const formattedVp = displayVp(vpDigits);
@@ -495,7 +510,8 @@
       const payload = {
         cislo_vp: formattedVp,
         cislo_vp_digits: vpDigits,
-        shade_id: createState.shadeId,
+        cislo_nh: createState.nhCode,
+        nh_id: createState.nhId,
         datum_vyroby: el.newDatum?.value || null,
         vyrobit_g: vyrobitValue,
         poznamka: (el.newPoznamka?.value || '').trim() || null,

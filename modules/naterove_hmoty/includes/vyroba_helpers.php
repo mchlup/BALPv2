@@ -33,6 +33,56 @@ if (!function_exists('nh_vyr_format_vp')) {
     }
 }
 
+if (!function_exists('nh_vyr_next_vp_digits')) {
+    function nh_vyr_next_vp_digits(PDO $pdo, ?DateTimeInterface $now = null): ?string
+    {
+        $now = $now ?? new DateTimeImmutable('now');
+        $yearPrefix = $now->format('y');
+        $minValue = (int)($yearPrefix . '0000');
+        $maxValue = (int)($yearPrefix . '9999');
+
+        $table = sql_quote_ident(nh_vyr_table_name());
+        $alias = 'v';
+        $digitsExpr = nh_vyr_digits_expr($pdo, $alias);
+
+        $sql = 'SELECT MAX(' . $digitsExpr . ') AS max_digits FROM ' . $table . ' AS ' . $alias
+            . ' WHERE ' . $digitsExpr . ' BETWEEN :min AND :max';
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindValue(':min', $minValue, PDO::PARAM_INT);
+        $stmt->bindValue(':max', $maxValue, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $maxDigits = $stmt->fetchColumn();
+        if ($maxDigits === false || $maxDigits === null) {
+            $maxDigits = 0;
+        }
+
+        $maxDigits = (int)$maxDigits;
+        $next = max($maxDigits, $minValue) + 1;
+        if ($next > $maxValue) {
+            return null;
+        }
+
+        return str_pad((string)$next, 6, '0', STR_PAD_LEFT);
+    }
+}
+
+if (!function_exists('nh_vyr_next_vp_formatted')) {
+    function nh_vyr_next_vp_formatted(PDO $pdo, ?DateTimeInterface $now = null): ?array
+    {
+        $digits = nh_vyr_next_vp_digits($pdo, $now);
+        if ($digits === null) {
+            return null;
+        }
+
+        return [
+            'digits' => $digits,
+            'formatted' => nh_vyr_format_vp($digits),
+        ];
+    }
+}
+
 if (!function_exists('nh_vyr_column_ref')) {
     function nh_vyr_column_ref(string $alias, string $column): string
     {
@@ -301,6 +351,62 @@ if (!function_exists('nh_vyr_fetch_shade')) {
         ];
 
         return $result;
+    }
+}
+
+if (!function_exists('nh_vyr_fetch_shade_by_nh_id')) {
+    function nh_vyr_fetch_shade_by_nh_id(PDO $pdo, int $nhId): ?array
+    {
+        if ($nhId <= 0) {
+            return null;
+        }
+
+        $table = sql_quote_ident(nh_vyr_shade_table_name());
+        $alias = 'ods';
+        $nhTable = sql_quote_ident(balp_nh_table_name());
+        $nhAlias = 'nh';
+        $nhFk = nh_vyr_shade_nh_fk($pdo);
+        if ($nhFk === null) {
+            return null;
+        }
+
+        $codeCol = nh_vyr_shade_code_column($pdo);
+        $variantCol = nh_vyr_shade_variant_column($pdo);
+        $nhCodeCol = nh_vyr_shade_nh_code_column($pdo);
+        $nameCol = nh_vyr_shade_name_column($pdo);
+
+        $select = [
+            "$alias." . sql_quote_ident('id') . ' AS id',
+            $codeCol ? "$alias." . sql_quote_ident($codeCol) . ' AS shade_cislo' : 'NULL AS shade_cislo',
+            $variantCol ? "$alias." . sql_quote_ident($variantCol) . ' AS shade_cislo_ods' : 'NULL AS shade_cislo_ods',
+            $nhCodeCol ? "$alias." . sql_quote_ident($nhCodeCol) . ' AS shade_cislo_nh' : 'NULL AS shade_cislo_nh',
+            $nameCol ? "$alias." . sql_quote_ident($nameCol) . ' AS shade_nazev' : 'NULL AS shade_nazev',
+            "$nhAlias." . sql_quote_ident('cislo') . ' AS nh_cislo',
+            "$nhAlias." . sql_quote_ident('nazev') . ' AS nh_nazev',
+        ];
+
+        $join = "LEFT JOIN $nhTable AS $nhAlias ON $nhAlias.id = $alias." . sql_quote_ident($nhFk);
+
+        $sql = 'SELECT ' . implode(', ', $select)
+            . " FROM $table AS $alias $join"
+            . ' WHERE ' . "$alias." . sql_quote_ident($nhFk) . ' = :id'
+            . ' ORDER BY ' . "$alias." . sql_quote_ident('id') . ' DESC'
+            . ' LIMIT 1';
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([':id' => $nhId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return null;
+        }
+
+        return [
+            'id' => (int)($row['id'] ?? 0),
+            'cislo' => nh_vyr_first_value($row, ['shade_cislo']),
+            'cislo_nh' => nh_vyr_first_value($row, ['shade_cislo_nh', 'nh_cislo']),
+            'cislo_ods' => nh_vyr_first_value($row, ['shade_cislo_ods']),
+            'nazev' => nh_vyr_first_value($row, ['shade_nazev', 'nh_nazev']),
+        ];
     }
 }
 
