@@ -28,6 +28,11 @@ return [
                 'view' => 'modules/naterove_hmoty/list.html',
                 'tab_id' => 'tab-nh',
                 'pane_id' => 'pane-nh',
+                'assets' => [
+                    'js' => [
+                        'js/nh.controller.js',
+                    ],
+                ],
             ],
             [
                 'slug' => 'nh-vyroba',
@@ -36,12 +41,11 @@ return [
                 'view' => 'modules/naterove_hmoty/vyroba.html',
                 'tab_id' => 'tab-nh-vyr',
                 'pane_id' => 'pane-nh-vyr',
-            ],
-        ],
-        'assets' => [
-            'js' => [
-                'js/nh.controller.js',
-                'js/nh.vyr.controller.js',
+                'assets' => [
+                    'js' => [
+                        'js/nh.vyr.controller.js',
+                    ],
+                ],
             ],
         ],
     ],
