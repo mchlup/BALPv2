@@ -20,6 +20,28 @@
     return headers;
   };
 
+  const formatNumber = (value, fractionDigits = 3) => {
+    if (value === null || value === undefined || value === '') {
+      return '';
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      const minFraction = value % 1 === 0 ? 0 : Math.min(fractionDigits, 3);
+      return value.toLocaleString('cs-CZ', {
+        maximumFractionDigits: fractionDigits,
+        minimumFractionDigits: minFraction,
+      });
+    }
+    const asNumber = Number(String(value).replace(/\s+/g, '').replace(',', '.'));
+    if (!Number.isNaN(asNumber) && Number.isFinite(asNumber)) {
+      const minFraction = asNumber % 1 === 0 ? 0 : Math.min(fractionDigits, 3);
+      return asNumber.toLocaleString('cs-CZ', {
+        maximumFractionDigits: fractionDigits,
+        minimumFractionDigits: minFraction,
+      });
+    }
+    return String(value);
+  };
+
   async function apiFetch(url, opts = {}) {
     const full = url + (url.includes('?') ? '&' : '?') + '_ts=' + Date.now();
     const token = getToken();
@@ -123,7 +145,8 @@
       const datum = row.datum_vyroby ? String(row.datum_vyroby).slice(0, 10) : '';
       const nh = row.cislo_nh ?? '';
       const name = row.nazev_nh ?? row.nazev ?? '';
-      const vyrobit = row.vyrobit_g ?? '';
+      const vyrobitVal = row.vyrobit_g;
+      const vyrobit = typeof vyrobitVal === 'number' ? formatNumber(vyrobitVal, 3) : (vyrobitVal ?? '');
       const pozn = row.poznamka ?? '';
       const id = row.id ?? '';
       return `<tr data-id="${String(id)}" style="cursor:pointer">` +
@@ -304,7 +327,8 @@
     const datum = row.datum_vyroby ? String(row.datum_vyroby).slice(0, 10) : '';
     const nh = row.cislo_nh ?? '';
     const nazev = row.nazev_nh ?? '';
-    const vyrobit = row.vyrobit_g ?? '';
+    const vyrobitVal = row.vyrobit_g;
+    const vyrobit = typeof vyrobitVal === 'number' ? formatNumber(vyrobitVal, 3) : (vyrobitVal ?? '');
     const pozn = row.poznamka ?? '';
     state.lastDetailId = row.id ?? null;
 
@@ -313,7 +337,10 @@
     if (el.detail.datum) el.detail.datum.textContent = datum || '—';
     if (el.detail.nh) el.detail.nh.textContent = nh || '—';
     if (el.detail.nazev) el.detail.nazev.textContent = nazev || '—';
-    if (el.detail.mnozstvi) el.detail.mnozstvi.textContent = vyrobit !== '' ? String(vyrobit) : '—';
+    if (el.detail.mnozstvi) {
+      const vyrobitText = formatNumber(row.vyrobit_g, 3) || (vyrobit !== '' ? String(vyrobit) : '');
+      el.detail.mnozstvi.textContent = vyrobitText !== '' ? vyrobitText : '—';
+    }
     if (el.detail.poznamka) el.detail.poznamka.textContent = pozn || '—';
 
     if (el.detail.vp) {
@@ -327,15 +354,14 @@
           const type = item?.typ ?? '';
           const code = item?.cislo ?? '';
           const name = item?.nazev ?? '';
-          let qty = item?.mnozstvi ?? '';
-          if (typeof qty === 'number') {
-            qty = qty.toLocaleString('cs-CZ', { maximumFractionDigits: 3 });
-          }
+          const qty = formatNumber(item?.mnozstvi, 3);
+          const navaz = formatNumber(item?.navazit, 3);
           return `<tr>` +
             `<td>${type || ''}</td>` +
             `<td>${code || ''}</td>` +
             `<td>${name || ''}</td>` +
-            `<td class="text-end">${qty !== undefined && qty !== null ? String(qty) : ''}</td>` +
+            `<td class="text-end">${qty}</td>` +
+            `<td class="text-end">${navaz}</td>` +
           `</tr>`;
         }).join('');
         if (el.detail.recEmpty) el.detail.recEmpty.classList.add('d-none');
@@ -349,15 +375,13 @@
     if (el.detail.zkTable) {
       if (tests.length > 0) {
         el.detail.zkTable.innerHTML = tests.map((item) => {
-          const name = item?.nazev ?? '';
-          const value = item?.hodnota ?? '';
-          const unit = item?.jednotka ?? '';
-          const note = item?.poznamka ?? '';
+          const date = item?.datum ? String(item.datum).slice(0, 10) : '';
+          const type = item?.typ ?? '';
+          const result = item?.vysledek ?? '';
           return `<tr>` +
-            `<td>${name || ''}</td>` +
-            `<td>${value || ''}</td>` +
-            `<td>${unit || ''}</td>` +
-            `<td>${note || ''}</td>` +
+            `<td>${date || ''}</td>` +
+            `<td>${type || ''}</td>` +
+            `<td>${result || ''}</td>` +
           `</tr>`;
         }).join('');
         if (el.detail.zkEmpty) el.detail.zkEmpty.classList.add('d-none');
