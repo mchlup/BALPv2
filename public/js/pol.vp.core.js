@@ -50,7 +50,6 @@
     tbody.innerHTML = '';
     (rows || []).forEach(r => {
       const susHm  = r.sus_hmot ?? r.sushm ?? r.sus_hm;   // fallbacky názvů
-      const susObj = r.sus_obj  ?? r.susobj;
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${safeCell(r.techpor)}</td>
@@ -60,7 +59,6 @@
         <td>${safeCell(fmtDate(r.platnost_do))}</td>
         <td class="text-end">${safeCell(fmtNum(r.sh))}</td>
         <td class="text-end">${safeCell(fmtNum(susHm))}</td>
-        <td class="text-end">${safeCell(fmtNum(susObj))}</td>
         <td class="text-end">${safeCell(fmtNum(r.gkg))}</td>
         <td class="text-end">${safeCell(fmtNum(r.navazit_g))}</td>
       `;
