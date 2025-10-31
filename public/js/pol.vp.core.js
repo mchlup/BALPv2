@@ -2,6 +2,16 @@
 // VP Core – datové volání + kompletní modál "Výrobní příkaz" (opravené sloupce, součty, přepočty)
 (() => {
   /* -------------------- Auth + API -------------------- */
+  const escapeHtml = (value) => {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+  const safeCell = (value) => escapeHtml(value ?? '');
   function authHeaders() {
     const h = { 'Content-Type': 'application/json' };
     try {
@@ -32,7 +42,7 @@
   }
   function renderLoadingRow(tbody, text = 'Načítám…') {
     if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="${colCountForBody(tbody)}">${text}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${colCountForBody(tbody)}">${escapeHtml(text)}</td></tr>`;
   }
   // jednotný renderer řádků pro „Suroviny“ i „Polotovary“
   function fillVpTable(tbody, rows) {
@@ -43,16 +53,16 @@
       const susObj = r.sus_obj  ?? r.susobj;
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${r.techpor ?? ''}</td>
-        <td>${r.cislo ?? ''}</td>
-        <td>${r.nazev ?? ''}</td>
-        <td>${fmtDate(r.platnost_od)}</td>
-        <td>${fmtDate(r.platnost_do)}</td>
-        <td class="text-end">${fmtNum(r.sh)}</td>
-        <td class="text-end">${fmtNum(susHm)}</td>
-        <td class="text-end">${fmtNum(susObj)}</td>
-        <td class="text-end">${fmtNum(r.gkg)}</td>
-        <td class="text-end">${fmtNum(r.navazit_g)}</td>
+        <td>${safeCell(r.techpor)}</td>
+        <td>${safeCell(r.cislo)}</td>
+        <td>${safeCell(r.nazev)}</td>
+        <td>${safeCell(fmtDate(r.platnost_od))}</td>
+        <td>${safeCell(fmtDate(r.platnost_do))}</td>
+        <td class="text-end">${safeCell(fmtNum(r.sh))}</td>
+        <td class="text-end">${safeCell(fmtNum(susHm))}</td>
+        <td class="text-end">${safeCell(fmtNum(susObj))}</td>
+        <td class="text-end">${safeCell(fmtNum(r.gkg))}</td>
+        <td class="text-end">${safeCell(fmtNum(r.navazit_g))}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -62,8 +72,8 @@
     const span = colCountForBody(tbody) - 1; // vše kromě posledního sloupce
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td colspan="${span}" class="text-end"><strong>${label}</strong></td>
-      <td class="text-end"><strong>${fmtNum(sumValue)}</strong></td>
+      <td colspan="${span}" class="text-end"><strong>${safeCell(label)}</strong></td>
+      <td class="text-end"><strong>${safeCell(fmtNum(sumValue))}</strong></td>
     `;
     tbody.appendChild(tr);
   }

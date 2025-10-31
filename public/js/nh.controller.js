@@ -62,6 +62,18 @@
     sort_dir: 'ASC',
   };
 
+  const escapeHtml = (value) => {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+  const safeCell = (value) => escapeHtml(value ?? '');
+  const safeDate = (value) => (value ? escapeHtml(String(value).substring(0, 10)) : '');
+
   function setMeta(text) {
     if (el.meta) el.meta.textContent = text || '';
   }
@@ -76,14 +88,21 @@
       const cat  = r.kategorie_id ?? r.category_id ?? r.kategorie ?? r.CAT ?? '';
       const dtod = r.dtod ?? r.DTOD ?? '';
       const dtdo = r.dtdo ?? r.DTDO ?? '';
-      return `<tr data-id="${id!==null?String(id):''}" style="cursor:pointer">
-        <td>${id!==null?String(id):''}</td>
-        <td>${code!==null?String(code):''}</td>
-        <td>${vp!==null?String(vp):''}</td>
-        <td>${name!==null?String(name):''}</td>
-        <td>${cat!==null?String(cat):''}</td>
-        <td>${dtod ? String(dtod).substring(0,10) : ''}</td>
-        <td>${dtdo ? String(dtdo).substring(0,10) : ''}</td>
+      const idCell = safeCell(id);
+      const codeCell = safeCell(code);
+      const vpCell = safeCell(vp);
+      const nameCell = safeCell(name);
+      const catCell = safeCell(cat);
+      const dtodCell = safeDate(dtod);
+      const dtdoCell = safeDate(dtdo);
+      return `<tr data-id="${idCell}" style="cursor:pointer">
+        <td>${idCell}</td>
+        <td>${codeCell}</td>
+        <td>${vpCell}</td>
+        <td>${nameCell}</td>
+        <td>${catCell}</td>
+        <td>${dtodCell}</td>
+        <td>${dtdoCell}</td>
       </tr>`;
     }).join('');
     const colSpan = 7;
@@ -304,15 +323,6 @@
     });
   }
 
-  const escapeHtml = (value) => {
-    if (value === null || value === undefined) return '';
-    return String(value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  };
   const fmtDate = (value) => {
     if (!value) return '';
     return String(value).substring(0, 10);
@@ -598,7 +608,7 @@
         : '';
       return `
       <tr data-index="${index}">
-        <td>${recipeTypeLabels[item.typ] || ''}</td>
+        <td>${escapeHtml(recipeTypeLabels[item.typ] || '')}</td>
         <td>${escapeHtml(item.kod ?? '')}</td>
         <td>${escapeHtml(item.nazev ?? '')}</td>
         <td class="text-end">${formattedAmount}</td>

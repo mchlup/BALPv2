@@ -10,6 +10,18 @@
   const $$ = (s, p=document) => Array.from(p.querySelectorAll(s));
   if (!window.API_URL) window.API_URL = '/balp2/api.php';
 
+  const escapeHtml = (value) => {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+  const safeCell = (value) => escapeHtml(value ?? '');
+  const safeDate = (value) => (value ? escapeHtml(String(value).substring(0, 10)) : '');
+
   const storageKey='balp_token';
   const getToken = ()=>{ try{return localStorage.getItem(storageKey)||'';}catch(e){return '';} };
   const apiHeaders = ()=>{ const h={'Content-Type':'application/json'}; const t=getToken(); if(t) h['Authorization']='Bearer '+t; return h; };
@@ -115,7 +127,7 @@
       this.els.tbody.innerHTML='';
       for (const r of items){
         const tr=document.createElement('tr');
-        tr.innerHTML = `<td>${r.id}</td><td>${r.cislo??''}</td><td>${r.nazev??''}</td><td>${r.sh??''}</td><td>${r.okp??''}</td><td>${r.olej??''}</td><td>${r.pozn??''}</td><td>${r.dtod?String(r.dtod).substring(0,10):''}</td><td>${r.dtdo?String(r.dtdo).substring(0,10):''}</td>`;
+        tr.innerHTML = `<td>${safeCell(r.id)}</td><td>${safeCell(r.cislo)}</td><td>${safeCell(r.nazev)}</td><td>${safeCell(r.sh)}</td><td>${safeCell(r.okp)}</td><td>${safeCell(r.olej)}</td><td>${safeCell(r.pozn)}</td><td>${safeDate(r.dtod)}</td><td>${safeDate(r.dtdo)}</td>`;
         this.els.tbody.appendChild(tr);
       }
     }
