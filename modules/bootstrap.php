@@ -22,6 +22,9 @@ if (!defined('BALP_UTF8_BOOTSTRAPPED')) {
     if (function_exists('setlocale')) {
         foreach (['cs_CZ.UTF-8', 'cs_CZ.utf8', 'cs_CZ', 'Czech_Czechia.1250', 'en_US.UTF-8'] as $localeOption) {
             if (@setlocale(LC_ALL, $localeOption)) {
+                if (defined('LC_NUMERIC')) {
+                    @setlocale(LC_NUMERIC, 'C');
+                }
                 break;
             }
         }
