@@ -62,6 +62,18 @@
     sort_dir: 'ASC',
   };
 
+  const escapeHtml = (value) => {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+  const safeCell = (value) => escapeHtml(value ?? '');
+  const safeDate = (value) => (value ? escapeHtml(String(value).substring(0, 10)) : '');
+
   function setMeta(text) {
     if (el.meta) el.meta.textContent = text || '';
   }
@@ -71,19 +83,26 @@
       // robustně přečteme potenciální názvy sloupců
       const id   = r.id ?? r.ID ?? r.Id ?? '';
       const code = r.kod ?? r.code ?? r.cislo ?? r.CISLO ?? r.CODE ?? '';
-      const vp   = r.cislo_vp ?? r.cisloVP ?? r.vp ?? r.vp_cislo ?? '';
+      const vt   = r.cislo_vt ?? r.cislo_vp ?? r.cisloVP ?? r.vp ?? r.vp_cislo ?? '';
       const name = r.nazev ?? r.name ?? r.NAZEV ?? r.NAME ?? '';
       const cat  = r.kategorie_id ?? r.category_id ?? r.kategorie ?? r.CAT ?? '';
       const dtod = r.dtod ?? r.DTOD ?? '';
       const dtdo = r.dtdo ?? r.DTDO ?? '';
-      return `<tr data-id="${id!==null?String(id):''}" style="cursor:pointer">
-        <td>${id!==null?String(id):''}</td>
-        <td>${code!==null?String(code):''}</td>
-        <td>${vp!==null?String(vp):''}</td>
-        <td>${name!==null?String(name):''}</td>
-        <td>${cat!==null?String(cat):''}</td>
-        <td>${dtod ? String(dtod).substring(0,10) : ''}</td>
-        <td>${dtdo ? String(dtdo).substring(0,10) : ''}</td>
+      const idCell = safeCell(id);
+      const codeCell = safeCell(code);
+      const vpCell = safeCell(vp);
+      const nameCell = safeCell(name);
+      const catCell = safeCell(cat);
+      const dtodCell = safeDate(dtod);
+      const dtdoCell = safeDate(dtdo);
+      return `<tr data-id="${idCell}" style="cursor:pointer">
+        <td>${idCell}</td>
+        <td>${codeCell}</td>
+        <td>${vpCell}</td>
+        <td>${nameCell}</td>
+        <td>${catCell}</td>
+        <td>${dtodCell}</td>
+        <td>${dtdoCell}</td>
       </tr>`;
     }).join('');
     const colSpan = 7;
@@ -261,7 +280,7 @@
   const f = {
     id: document.getElementById('nh-id'),
     kod: document.getElementById('nh-kod'),
-    cislo_vp: document.getElementById('nh-cislo_vp'),
+    cislo_vt: document.getElementById('nh-cislo_vt'),
     nazev: document.getElementById('nh-nazev'),
     kategorie_id: document.getElementById('nh-kategorie_id'),
     pozn: document.getElementById('nh-poznamka'),
@@ -304,15 +323,6 @@
     });
   }
 
-  const escapeHtml = (value) => {
-    if (value === null || value === undefined) return '';
-    return String(value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  };
   const fmtDate = (value) => {
     if (!value) return '';
     return String(value).substring(0, 10);
@@ -598,7 +608,7 @@
         : '';
       return `
       <tr data-index="${index}">
-        <td>${recipeTypeLabels[item.typ] || ''}</td>
+        <td>${escapeHtml(recipeTypeLabels[item.typ] || '')}</td>
         <td>${escapeHtml(item.kod ?? '')}</td>
         <td>${escapeHtml(item.nazev ?? '')}</td>
         <td class="text-end">${formattedAmount}</td>
@@ -692,7 +702,7 @@
     const set = (k, v) => { if (f[k]) f[k].value = (v ?? ''); };
     set('id', row.id ?? '');
     set('kod', row.kod ?? row.code ?? row.cislo ?? '');
-    set('cislo_vp', row.cislo_vp ?? row.cisloVP ?? row.vp ?? row.vp_cislo ?? '');
+    set('cislo_vt', row.cislo_vt ?? row.cislo_vp ?? row.cisloVP ?? row.vp ?? row.vp_cislo ?? '');
     set('nazev', row.nazev ?? row.name ?? '');
     set('kategorie_id', row.kategorie_id ?? row.kategorie ?? '');
     set('pozn', row.pozn ?? '');
@@ -709,7 +719,7 @@
       kod: read('kod'),
       nazev: read('nazev'),
       kategorie_id: read('kategorie_id'),
-      cislo_vp: read('cislo_vp'),
+      cislo_vt: read('cislo_vt'),
       pozn: read('pozn'),
       dtod: read('dtod'),
       dtdo: read('dtdo'),
@@ -756,7 +766,7 @@
     fillForm({
       id: '',
       kod: '',
-      cislo_vp: '',
+      cislo_vt: '',
       nazev: '',
       pozn: '',
       dtod: formatDate(today),
