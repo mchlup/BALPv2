@@ -40,6 +40,7 @@ try {
     $dtodCol = "$nhAlias." . sql_quote_ident('dtod');
     $dtdoCol = "$nhAlias." . sql_quote_ident('dtdo');
     $katCol = "$nhAlias." . sql_quote_ident('kategorie_id');
+    $hasCategory = balp_nh_has_column($pdo, 'kategorie_id');
 
     $sortColumns = [
         'id' => $idCol,
@@ -49,7 +50,7 @@ try {
         'dtod' => $dtodCol,
         'dtdo' => $dtdoCol,
     ];
-    if (balp_nh_has_column($pdo, 'kategorie_id')) {
+    if ($hasCategory) {
         $sortColumns['kategorie_id'] = $katCol;
     }
     if ($hasCisloVt) {
@@ -130,6 +131,9 @@ try {
     $vtSelect = $hasCisloVt
         ? '(' . $vtExpr . ') AS ' . sql_quote_ident('cislo_vt')
         : 'NULL AS ' . sql_quote_ident('cislo_vt');
+    $kategorieSelect = $hasCategory
+        ? $katCol . ' AS ' . sql_quote_ident('kategorie_id')
+        : 'NULL AS ' . sql_quote_ident('kategorie_id');
     $sql = 'SELECT '
         . "$idCol AS id, "
         . "$cisloCol AS cislo, "
@@ -138,7 +142,7 @@ try {
         . "$poznCol AS pozn, "
         . "$dtodCol AS dtod, "
         . "$dtdoCol AS dtdo, "
-        . "NULL AS kategorie_id FROM $nhTable AS $nhAlias $whereSql ORDER BY $orderBy $sortDir LIMIT :limit OFFSET :offset";
+        . "$kategorieSelect FROM $nhTable AS $nhAlias $whereSql ORDER BY $orderBy $sortDir LIMIT :limit OFFSET :offset";
     $stmt = $pdo->prepare($sql);
     foreach ($params as $k => $v) {
         $stmt->bindValue($k, $v);
@@ -151,6 +155,11 @@ try {
     foreach ($rows as &$row) {
         $row['kod'] = $row['cislo'];
         $row['name'] = $row['nazev'];
+        if (!array_key_exists('kategorie_id', $row) || $row['kategorie_id'] === null || $row['kategorie_id'] === '') {
+            $row['kategorie_id'] = null;
+        } elseif (!is_int($row['kategorie_id'])) {
+            $row['kategorie_id'] = (int)$row['kategorie_id'];
+        }
         if (!array_key_exists('cislo_vt', $row)) {
             $row['cislo_vt'] = null;
         }
