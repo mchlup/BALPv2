@@ -755,18 +755,33 @@
     el.detail.exportPdf.addEventListener('click', () => openDetailExport(detailExportPdfEndpoint));
   }
 
-  const onShown = (ev) => {
-    if (ev && ev.target && ev.target.id !== 'tab-nh-vyr') return;
-    if (!el.pane.classList.contains('loaded')) {
+  const ensureTabLoaded = (force = false) => {
+    if (!el.pane) return;
+    const firstTime = !el.pane.classList.contains('loaded');
+    if (firstTime) {
       el.pane.classList.add('loaded');
       syncInputsFromState();
       load(true);
+      return;
     }
+    if (force) {
+      load(true);
+    }
+  };
+
+  const onShown = (ev) => {
+    if (ev && ev.target && ev.target.id !== 'tab-nh-vyr') return;
+    ensureTabLoaded(false);
   };
 
   try {
     document.addEventListener('shown.bs.tab', onShown);
   } catch {}
+  document.addEventListener('balp:tab-shown', (ev) => {
+    if (!ev?.detail) return;
+    if (ev.detail.tab !== 'nh-vyroba') return;
+    ensureTabLoaded(Boolean(ev.detail.refresh));
+  });
   if (el.tabBtn && el.tabBtn.classList.contains('active')) {
     onShown({ target: el.tabBtn });
   }

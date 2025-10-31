@@ -180,6 +180,17 @@
     return entry.loadingPromise;
   };
 
+  const emitTabReady = (entry, extraDetail = {}) => {
+    if (!entry) return;
+    const detail = {
+      module: entry.module.slug,
+      tab: entry.tab.slug,
+      paneId: entry.paneId,
+      ...extraDetail,
+    };
+    document.dispatchEvent(new CustomEvent('balp:tab-shown', { detail }));
+  };
+
   const renderModuleTabs = (modules) => {
     const nav = $('#moduleTabs');
     const content = $('#moduleTabsContent');
@@ -247,11 +258,7 @@
       button.addEventListener('shown.bs.tab', () => {
         activeTabKey = key;
         ensureTabContent(key)
-          .finally(() => {
-            document.dispatchEvent(new CustomEvent('balp:tab-shown', {
-              detail: { module: module.slug, tab: tab.slug, paneId },
-            }));
-          });
+          .finally(() => emitTabReady(entry));
       });
 
       if (!firstKey) firstKey = key;
@@ -266,11 +273,7 @@
         entry.pane.classList.add('show', 'active');
         activeTabKey = firstKey;
         ensureTabContent(firstKey)
-          .finally(() => {
-            document.dispatchEvent(new CustomEvent('balp:tab-shown', {
-              detail: { module: entry.module.slug, tab: entry.tab.slug, paneId: entry.paneId },
-            }));
-          });
+          .finally(() => emitTabReady(entry));
       }
     }
   };
@@ -341,11 +344,7 @@
     const entry = tabsState.get(activeTabKey);
     if (!entry) return;
     ensureTabContent(activeTabKey)
-      .then(() => {
-        document.dispatchEvent(new CustomEvent('balp:tab-shown', {
-          detail: { module: entry.module.slug, tab: entry.tab.slug, paneId: entry.paneId },
-        }));
-      })
+      .then(() => emitTabReady(entry, { refresh: true }))
       .catch(() => {});
   };
 
