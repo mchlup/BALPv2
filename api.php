@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/api/api_patch.php';  // přidá action=auth_login, action=auth_me
 require __DIR__ . '/helpers.php';
+require_once __DIR__ . '/modules/bootstrap.php';
 $c = cfg(); $pdo = db();
 $action = $_GET['action'] ?? '';
 
@@ -10,6 +11,36 @@ if ($action==='_meta_tables'){
   $db=$c['db']['database'];
   $st=$pdo->prepare("SELECT TABLE_NAME name, TABLE_COMMENT comment FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=:db ORDER BY 1");
   $st->execute([':db'=>$db]); respond_json(['tables'=>$st->fetchAll()]);
+}
+if ($action==='_modules'){
+  $modules = array_values(array_map(function(array $module){
+    $uiTabs = [];
+    foreach (($module['ui']['tabs'] ?? []) as $tab) {
+        $uiTabs[] = [
+            'slug' => $tab['slug'] ?? ($module['slug'] . '-tab'),
+            'label' => $tab['label'] ?? ($tab['slug'] ?? $module['name'] ?? $module['slug']),
+            'order' => $tab['order'] ?? 100,
+            'view' => $tab['view'] ?? null,
+            'tab_id' => $tab['tab_id'] ?? null,
+            'pane_id' => $tab['pane_id'] ?? null,
+        ];
+    }
+    $uiAssets = [
+        'css' => array_values($module['ui']['assets']['css'] ?? []),
+        'js' => array_values($module['ui']['assets']['js'] ?? []),
+    ];
+    return [
+      'slug' => $module['slug'],
+      'name' => $module['name'] ?? $module['slug'],
+      'description' => $module['description'] ?? '',
+      'assets' => $module['assets'] ?? [],
+      'ui' => [
+        'tabs' => $uiTabs,
+        'assets' => $uiAssets,
+      ],
+    ];
+  }, balp_modules_registry()));
+  respond_json(['modules' => $modules]);
 }
 if ($action==='_meta_columns'){
   $db=$c['db']['database']; $t=$_GET['table'] ?? '';

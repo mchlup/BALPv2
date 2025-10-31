@@ -1,0 +1,304 @@
+<div class="module-polotovary">
+  <div class="filter-toolbar row g-2 align-items-end mb-3">
+    <div class="col-12 col-lg-4">
+      <label for="pol-search" class="form-label">Vyhledat polotovar</label>
+      <input type="text" class="form-control" id="pol-search" placeholder="Zadejte část názvu nebo čísla…">
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <label class="form-label" for="pol-filter-olej">Filtrovat olej</label>
+      <select id="pol-filter-olej" class="form-select">
+        <option value="">Vše</option>
+        <option value="1">Jen olejové</option>
+        <option value="0">Bez oleje</option>
+      </select>
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <label class="form-label" for="pol-filter-platnost">Platnost k datu</label>
+      <input type="date" class="form-control" id="pol-filter-platnost" placeholder="YYYY-MM-DD">
+    </div>
+    <div class="col-6 col-md-4 col-xl-2">
+      <label class="form-label" for="pol-limit">Záznamů na stránku</label>
+      <select id="pol-limit" class="form-select">
+        <option>10</option>
+        <option>25</option>
+        <option selected>50</option>
+        <option>100</option>
+      </select>
+    </div>
+    <div class="col-12 col-lg-auto ms-lg-auto">
+      <div class="toolbar-actions d-flex flex-wrap gap-2">
+        <button type="button" id="pol-reset" class="btn btn-outline-secondary">Reset filtrů</button>
+        <button id="pol-new" class="btn btn-success">Nový polotovar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-sm table-hover table-striped align-middle" id="pol-table">
+      <thead>
+        <tr>
+          <th scope="col" data-col="id" class="sortable">ID</th>
+          <th scope="col" data-col="cislo" class="sortable">Číslo</th>
+          <th scope="col" data-col="nazev" class="sortable">Název</th>
+          <th scope="col" data-col="sh" class="sortable">SH</th>
+          <th scope="col" data-col="okp" class="sortable">OKP</th>
+          <th scope="col" data-col="olej" class="sortable">Olej</th>
+          <th scope="col">Pozn.</th>
+          <th scope="col" data-col="dtod" class="sortable">Platnost od</th>
+          <th scope="col" data-col="dtdo" class="sortable">Platnost do</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center mt-2">
+    <div class="small text-muted" id="pol-summary">—</div>
+    <div class="btn-group" role="group">
+      <button class="btn btn-outline-secondary btn-sm" id="pol-prev">&laquo; Předchozí</button>
+      <button class="btn btn-outline-secondary btn-sm" id="pol-next">Další &raquo;</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modál pro akce s jednotlivým polotovarem -->
+<div class="modal fade" id="polRowModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-box-seam"></i> Polotovar</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zavřít"></button>
+      </div>
+      <div class="modal-body">
+        <div id="polRowModalBody">
+          <div class="placeholder-glow">
+            <div class="placeholder col-12" style="height: 2rem;"></div>
+            <div class="placeholder col-8"></div>
+            <div class="placeholder col-6"></div>
+            <div class="placeholder col-4"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="me-auto small text-muted" id="polRowMeta"></div>
+        <div class="btn-group">
+          <button type="button" class="btn btn-outline-primary" id="polRowEdit"><i class="bi bi-pencil-square"></i> Upravit</button>
+          <button type="button" class="btn btn-outline-secondary" id="polRowClone"><i class="bi bi-files"></i> Klonovat</button>
+          <button type="button" class="btn btn-outline-danger" id="polRowDelete"><i class="bi bi-trash"></i> Smazat</button>
+        </div>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zavřít</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Výrobní příkaz -->
+<div class="modal fade" id="vpModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Výrobní příkaz</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zavřít"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3 align-items-end">
+          <div class="col-md-4">
+            <label class="form-label">Polotovar</label>
+            <input type="text" class="form-control" id="vp-pol-head" disabled>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Vyrobit (kg)</label>
+            <input type="number" step="0.01" min="0.01" class="form-control" id="vp-mnozstvi" value="1.00">
+          </div>
+          <div class="col-md-5"></div>
+        </div>
+        <div class="row mt-2">
+          <div class="col">
+            <div id="vp-actions-bottom" class="btn-toolbar gap-2 flex-wrap"></div>
+          </div>
+        </div>
+
+        <div id="vp-summary" class="row g-3 mt-2">
+          <div class="col-md-3">
+            <small class="text-muted d-block">Poznámka</small>
+            <div id="vp-poznamka" class="fw-medium text-truncate"></div>
+          </div>
+          <div class="col-md-2">
+            <small class="text-muted d-block">Specifická hmotnost (skutečná)</small>
+            <div id="vp-sh-skut" class="fw-medium"></div>
+          </div>
+          <div class="col-md-2">
+            <small class="text-muted d-block">Specifická hmotnost (spočítaná)</small>
+            <div id="vp-sh-calc" class="fw-medium"></div>
+          </div>
+          <div class="col-md-2">
+            <small class="text-muted d-block">Sušina — hmotnost (%)</small>
+            <div id="vp-sus-hmot" class="fw-medium"></div>
+          </div>
+          <div class="col-md-2">
+            <small class="text-muted d-block">Sušina — objem (%)</small>
+            <div id="vp-sus-obj" class="fw-medium"></div>
+          </div>
+        </div>
+        <hr>
+
+        <ul class="nav nav-tabs" id="vpTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="vp-sur-tab" data-bs-toggle="tab" data-bs-target="#vp-tab-sur" type="button" role="tab">Suroviny</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="vp-pol-tab" data-bs-toggle="tab" data-bs-target="#vp-tab-pol" type="button" role="tab">Polotovary</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" type="button" id="vp-users-link">Uživatelé</button>
+          </li>
+        </ul>
+        <div class="tab-content mt-2">
+          <div class="tab-pane fade show active" id="vp-tab-sur" role="tabpanel" aria-labelledby="vp-sur-tab">
+            <div class="table-responsive">
+              <table class="table table-sm table-striped" id="vp-table-sur">
+                <thead>
+                  <tr>
+                    <th>Tech. poř.</th>
+                    <th>Číslo</th>
+                    <th>Název</th>
+                    <th>Platnost od</th>
+                    <th>Platnost do</th>
+                    <th class="text-end">SH</th>
+                    <th class="text-end">Suš.hm %</th>
+                    <th class="text-end">Suš.obj %</th>
+                    <th class="text-end">g / kg</th>
+                    <th class="text-end">Navážit (g)</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="tab-pane fade" id="vp-tab-pol" role="tabpanel" aria-labelledby="vp-pol-tab">
+            <div class="table-responsive">
+              <table class="table table-sm table-striped" id="vp-table-pol">
+                <thead>
+                  <tr>
+                    <th>Tech. poř.</th>
+                    <th>Číslo</th>
+                    <th>Název</th>
+                    <th>Platnost od</th>
+                    <th>Platnost do</th>
+                    <th class="text-end">SH</th>
+                    <th class="text-end">Suš.hm %</th>
+                    <th class="text-end">Suš.obj %</th>
+                    <th class="text-end">g / kg</th>
+                    <th class="text-end">Navážit (g)</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zavřít</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Editor receptury pro polotovary -->
+<div class="modal fade" id="polEditorModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Editor receptury</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zavřít"></button>
+      </div>
+      <div class="modal-body">
+        <form id="pol-edit-form" onsubmit="return false;">
+          <div class="row g-3">
+            <div class="col-md-2">
+              <label class="form-label">ID</label>
+              <input id="pe-id" class="form-control" disabled>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Číslo</label>
+              <input id="pe-cislo" class="form-control">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Název</label>
+              <input id="pe-nazev" class="form-control">
+            </div>
+            <div class="col-md-1">
+              <label class="form-label">SH</label>
+              <input id="pe-sh" class="form-control">
+            </div>
+            <div class="col-md-1">
+              <label class="form-label">OKP</label>
+              <input id="pe-okp" class="form-control">
+            </div>
+            <div class="col-md-1">
+              <label class="form-label">Olej</label>
+              <input id="pe-olej" class="form-control">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Poznámka</label>
+              <input id="pe-poz" class="form-control">
+            </div>
+          </div>
+          <div class="row g-3 mt-2" id="pe-summary">
+            <div class="col-md-3">
+              <small class="text-muted d-block">Poznámka</small>
+              <div id="vp-poznamka" class="fw-medium text-truncate"></div>
+            </div>
+            <div class="col-md-2">
+              <small class="text-muted d-block">Specifická hmotnost (skutečná)</small>
+              <div id="vp-sh-skut" class="fw-medium"></div>
+            </div>
+            <div class="col-md-2">
+              <small class="text-muted d-block">Specifická hmotnost (spočítaná)</small>
+              <div id="vp-sh-calc" class="fw-medium"></div>
+            </div>
+            <div class="col-md-2">
+              <small class="text-muted d-block">Sušina — hmotnost (%)</small>
+              <div id="vp-sus-hmot" class="fw-medium"></div>
+            </div>
+            <div class="col-md-2">
+              <small class="text-muted d-block">Sušina — objem (%)</small>
+              <div id="vp-sus-obj" class="fw-medium"></div>
+            </div>
+          </div>
+          <hr>
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0">Položky receptury</h6>
+            <div class="btn-group">
+              <button class="btn btn-sm btn-outline-primary" id="pe-add-sur">Přidat surovinu</button>
+              <button class="btn btn-sm btn-outline-secondary" id="pe-add-pol">Přidat polotovar</button>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle" id="pe-table">
+              <thead>
+                <tr>
+                  <th>Typ</th>
+                  <th>Kód / název</th>
+                  <th>Tech.poř.</th>
+                  <th class="text-end">g / kg</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <div class="me-auto">
+          <button class="btn btn-outline-danger" id="pe-delete">Smazat</button>
+          <button class="btn btn-outline-secondary" id="pe-clone">Klonovat</button>
+        </div>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Zavřít</button>
+        <button class="btn btn-primary" id="pe-save">Uložit</button>
+      </div>
+    </div>
+  </div>
+</div>

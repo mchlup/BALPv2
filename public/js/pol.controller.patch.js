@@ -133,11 +133,15 @@
     }
   };
 
-  // init when DOM ready
-  document.addEventListener('DOMContentLoaded', ()=>{
+  const init = () => {
     pol.grabDom();
     pol.bind();
-    // auto-load if tab is already active on initial render
-    if (pol.ready && (pol.els.panel?.classList.contains('active'))) { pol.load(true); }
-  });
+    window.reloadPolList = () => pol.load(true);
+    if (pol.ready && (pol.els.panel?.classList.contains('active') || pol.els.panel?.classList.contains('show'))) {
+      pol.load(true);
+    }
+  };
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
 })();

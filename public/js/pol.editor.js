@@ -8,6 +8,11 @@
   const $ = (s, p=document)=>p.querySelector(s);
   const $$ = (s, p=document)=>Array.from(p.querySelectorAll(s));
 
+  const onReady = (fn) => {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fn);
+    else fn();
+  };
+
   const storageKey='balp_token';
   const getToken = ()=>{ try{return localStorage.getItem(storageKey)||'';}catch(e){return '';} };
   const apiHeaders = ()=>{ const h={'Content-Type':'application/json'}; const t=getToken(); if(t) h['Authorization']='Bearer '+t; return h; };
@@ -33,7 +38,7 @@
   };
 
   // --- Bootstrap tab fix: z linků s data-bs-toggle="tab" a href != '#...' udělej normální link ---
-  document.addEventListener('DOMContentLoaded', ()=>{
+  onReady(()=>{
     document.querySelectorAll('[data-bs-toggle="tab"][href]').forEach(el => {
       const href = el.getAttribute('href') || '';
       if (!href.startsWith('#')) {
@@ -200,7 +205,7 @@
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
   }
 
-    document.addEventListener('DOMContentLoaded', ()=>{
+    onReady(()=>{
     // toolbar / header button "Nový polotovar"
     const headerBtn = document.getElementById('pol-new');
     if (headerBtn) {

@@ -7,3 +7,20 @@
 - `public/app.html` — CRUD UI (Bootstrap + DataTables)
 - `admin_users.php` — správa uživatelů (VARBINARY(16) login/heslo)
 - `helpers.php`, `config/config.sample.php`
+
+## Modulární architektura
+
+BALP v2 je nyní rozdělený do samostatných modulů v adresáři `modules/`. Každý modul
+popisuje své API endpointy, veřejná aktiva a pomocné skripty v souboru `module.php`.
+K dispozici jsou předpřipravené moduly:
+
+- `modules/polotovary` — polotovary a výrobní příkazy,
+- `modules/suroviny` — správa surovin,
+- `modules/naterove_hmoty` — nátěrové hmoty (včetně výrobních exportů).
+
+Moduly se registrují automaticky pomocí `modules/bootstrap.php`. Jakýkoli skript v
+`api/` je pouze tenký vstupní bod, který zavolá funkci
+`balp_include_module_api(<slug>, <endpoint>)` a deleguje zpracování na odpovídající
+modul. Přidání nového modulu tak spočívá v založení nové složky v `modules/` a v
+definici mapy endpointů v `module.php`. Přehled registrovaných modulů vrací API
+volání `api.php?action=_modules`.

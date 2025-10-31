@@ -1,0 +1,173 @@
+<div class="module-nh">
+  <div class="filter-toolbar row g-2 align-items-end mb-3">
+    <div class="col-12 col-lg-4">
+      <label for="nh-search" class="form-label">Vyhledat položku NH</label>
+      <input type="text" class="form-control" id="nh-search" placeholder="Zadejte část názvu nebo kódu…">
+    </div>
+    <div class="col-6 col-md-3 col-xl-2">
+      <label class="form-label" for="nh-code-from">Číslo od</label>
+      <input type="text" class="form-control" id="nh-code-from" placeholder="Např. 1000">
+    </div>
+    <div class="col-6 col-md-3 col-xl-2">
+      <label class="form-label" for="nh-code-to">Číslo do</label>
+      <input type="text" class="form-control" id="nh-code-to" placeholder="Např. 1999">
+    </div>
+    <div class="col-6 col-md-3 col-xl-2">
+      <label class="form-label" for="nh-active">Platnost</label>
+      <select id="nh-active" class="form-select">
+        <option value="1" selected>Jen platné</option>
+        <option value="">Vše</option>
+        <option value="0">Jen neplatné</option>
+      </select>
+    </div>
+    <div class="col-6 col-md-3 col-xl-2">
+      <label class="form-label" for="nh-limit">Záznamů na stránku</label>
+      <select id="nh-limit" class="form-select">
+        <option>10</option>
+        <option>25</option>
+        <option selected>50</option>
+        <option>100</option>
+      </select>
+    </div>
+    <div class="col-12 col-lg-auto ms-lg-auto">
+      <div class="toolbar-actions d-flex flex-wrap gap-2">
+        <button type="button" id="nh-reset" class="btn btn-outline-secondary">Reset filtrů</button>
+        <button type="button" id="nh-new" class="btn btn-success">Nová NH</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-sm table-striped" id="nh-table">
+      <thead>
+        <tr>
+          <th scope="col" data-col="id" class="sortable">ID</th>
+          <th scope="col" data-col="cislo" class="sortable">Kód</th>
+          <th scope="col" data-col="cislo_vt" class="sortable">Číslo VP</th>
+          <th scope="col" data-col="nazev" class="sortable">Název</th>
+          <th scope="col" data-col="kategorie_id" class="sortable">Kategorie</th>
+          <th scope="col" data-col="dtod" class="sortable">Platnost od</th>
+          <th scope="col" data-col="dtdo" class="sortable">Platnost do</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center mt-2">
+    <div id="nh-meta" class="small text-muted">Přihlaste se pro načtení dat…</div>
+    <div class="btn-group" role="group">
+      <button class="btn btn-outline-secondary" id="nh-prev-bottom">&laquo; Předchozí</button>
+      <button class="btn btn-outline-secondary" id="nh-next-bottom">Další &raquo;</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="nhModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Detail Nátěrové hmoty</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zavřít"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-sm-2">
+            <label for="nh-id" class="form-label">ID</label>
+            <input type="text" class="form-control" id="nh-id" disabled>
+          </div>
+          <div class="col-sm-3">
+            <label for="nh-kod" class="form-label">Kód</label>
+            <input type="text" class="form-control" id="nh-kod" disabled>
+            <label for="nh-cislo_vt" class="form-label">Číslo VP</label>
+            <input type="text" class="form-control" id="nh-cislo_vt" disabled>
+          </div>
+          <div class="col-sm-7">
+            <label for="nh-nazev" class="form-label">Název</label>
+            <input type="text" class="form-control" id="nh-nazev" disabled>
+          </div>
+          <div class="col-sm-3">
+            <label for="nh-kategorie_id" class="form-label">Kategorie</label>
+            <input type="number" class="form-control" id="nh-kategorie_id" disabled>
+          </div>
+          <div class="col-sm-3">
+            <label for="nh-dtod" class="form-label">Platnost od</label>
+            <input type="date" class="form-control" id="nh-dtod" disabled>
+          </div>
+          <div class="col-sm-3">
+            <label for="nh-dtdo" class="form-label">Platnost do</label>
+            <input type="date" class="form-control" id="nh-dtdo" disabled>
+          </div>
+          <div class="col-12">
+            <label for="nh-poznamka" class="form-label">Poznámka</label>
+            <textarea id="nh-poznamka" class="form-control" rows="3" disabled></textarea>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <h6 class="mb-2 text-uppercase text-muted small">Varianty / ODS</h6>
+          <div id="nh-ods-container" class="d-flex flex-column gap-3"></div>
+        </div>
+
+        <div class="mt-4 d-none" id="nh-recipe-editor">
+          <h6 class="mb-2 text-uppercase text-muted small">Aktuální receptura</h6>
+          <div class="card border-0 shadow-sm">
+            <div class="card-body">
+              <div class="row g-2 align-items-end">
+                <div class="col-sm-3">
+                  <label for="nh-recipe-type" class="form-label">Typ položky</label>
+                  <select id="nh-recipe-type" class="form-select form-select-sm">
+                    <option value="sur">Surovina</option>
+                    <option value="pol">Polotovar</option>
+                    <option value="other">Ostatní</option>
+                  </select>
+                </div>
+                <div class="col-sm-3">
+                  <label for="nh-recipe-code" class="form-label">Kód</label>
+                  <input type="text" id="nh-recipe-code" class="form-control form-control-sm" placeholder="Např. 12345" list="nh-recipe-code-suggestions">
+                  <datalist id="nh-recipe-code-suggestions"></datalist>
+                </div>
+                <div class="col-sm-4">
+                  <label for="nh-recipe-name" class="form-label">Název</label>
+                  <input type="text" id="nh-recipe-name" class="form-control form-control-sm" placeholder="Název položky" list="nh-recipe-name-suggestions">
+                  <datalist id="nh-recipe-name-suggestions"></datalist>
+                </div>
+                <div class="col-sm-2">
+                  <label for="nh-recipe-amount" class="form-label">g / kg</label>
+                  <input type="number" step="0.01" min="0" id="nh-recipe-amount" class="form-control form-control-sm" placeholder="0,00">
+                </div>
+                <div class="col-12 text-end">
+                  <button type="button" class="btn btn-sm btn-outline-primary" id="nh-recipe-add">Přidat položku</button>
+                </div>
+              </div>
+              <div class="table-responsive mt-3">
+                <table class="table table-sm align-middle mb-0" id="nh-recipe-table">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="width: 15%;">Typ</th>
+                      <th style="width: 20%;">Kód</th>
+                      <th>Název</th>
+                      <th class="text-end" style="width: 15%;">g / kg</th>
+                      <th style="width: 40px;"></th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+                <div class="text-center text-muted small py-3" id="nh-recipe-empty">Receptura zatím neobsahuje žádné položky.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="me-auto small text-muted" id="nh-detail-meta"></div>
+        <div class="btn-group me-2">
+          <button type="button" class="btn btn-outline-primary" id="btn-nh-edit">Upravit</button>
+          <button type="button" class="btn btn-success d-none" id="btn-nh-save">Uložit</button>
+          <button type="button" class="btn btn-outline-danger" id="btn-nh-delete">Smazat</button>
+        </div>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zavřít</button>
+      </div>
+    </div>
+  </div>
+</div>
