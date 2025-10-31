@@ -94,10 +94,22 @@
           this.load();
         });
       });
-      // load when tab shown
+      // load when tab shown via Bootstrap (legacy wiring)
       if (this.els.tabBtn) {
         this.els.tabBtn.addEventListener('shown.bs.tab', ()=> this.load(true));
       }
+
+      // reload when the shell broadcasts tab activation (login/logout refresh)
+      document.addEventListener('balp:tab-shown', (ev) => {
+        if (!ev?.detail) return;
+        const paneId = this.els.panel?.id;
+        if (!paneId) return;
+        const targetId = ev.detail.paneId;
+        if (!targetId) return;
+        if (targetId === paneId || (targetId === 'pane-pol' && paneId === 'pane-polotovary') || (targetId === 'pane-polotovary' && paneId === 'pane-pol')) {
+          this.load(true);
+        }
+      });
     },
     async load(force=false){
       if (!this.ready) return;

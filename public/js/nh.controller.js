@@ -240,18 +240,29 @@
     });
   });
 
+  const ensureLoaded = (force=false) => {
+    if (!el.pane.classList.contains('loaded')) {
+      el.pane.classList.add('loaded');
+      load(true);
+      return;
+    }
+    if (force) load(true);
+  };
+
   // Načtení při prvním zobrazení záložky
   const onShown = (ev) => {
     if (ev && ev.target && ev.target.id !== 'tab-nh') return;
-    if (!el.pane.classList.contains('loaded')) {
-      el.pane.classList.add('loaded');
-      load();
-    }
+    ensureLoaded(false);
   };
   // Pokud používáte Bootstrap 5 tab events:
   try {
     document.addEventListener('shown.bs.tab', onShown);
   } catch {}
+  document.addEventListener('balp:tab-shown', (ev) => {
+    if (ev?.detail?.paneId === 'pane-nh') {
+      ensureLoaded(true);
+    }
+  });
   // Když už je NH aktivní hned po načtení
   if (el.tabBtn && el.tabBtn.classList.contains('active')) onShown({target: el.tabBtn});
 
