@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/api/api_patch.php';  // přidá action=auth_login, action=auth_me
-require __DIR__ . '/helpers.php';
+require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/modules/bootstrap.php';
 $c = cfg(); $pdo = db();
 $action = $_GET['action'] ?? '';
