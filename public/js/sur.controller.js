@@ -94,7 +94,6 @@
       sh: document.getElementById('f-sh'),
       sus_sh: document.getElementById('f-sus_sh'),
       sus_hmot: document.getElementById('f-sus_hmot'),
-      sus_obj: document.getElementById('f-sus_obj'),
       okp: document.getElementById('f-okp'),
       olej: document.getElementById('f-olej'),
       pozn: document.getElementById('f-pozn'),
@@ -127,7 +126,7 @@
       const el = formEls[id];
       if (!el) return null;
       const v = el.value;
-      if (['sh', 'sus_sh', 'sus_hmot', 'sus_obj', 'okp'].includes(id)) return v === '' ? null : Number(v);
+      if (['sh', 'sus_sh', 'sus_hmot', 'okp'].includes(id)) return v === '' ? null : Number(v);
       if (['olej'].includes(id)) return v === '' ? null : parseInt(v, 10);
       return v === '' ? null : v;
     };
@@ -150,7 +149,6 @@
       set('sh', row.sh);
       set('sus_sh', row.sus_sh);
       set('sus_hmot', row.sus_hmot);
-      set('sus_obj', row.sus_obj);
       set('okp', row.okp);
       set('olej', row.olej);
       set('pozn', row.pozn);
@@ -230,7 +228,7 @@
     };
 
     const newItem = () => {
-      fillForm({ id: '', cislo: '', nazev: '', sh: null, sus_sh: null, sus_hmot: null, sus_obj: null, okp: null, olej: null, pozn: '', dtod: '', dtdo: '' });
+      fillForm({ id: '', cislo: '', nazev: '', sh: null, sus_sh: null, sus_hmot: null, okp: null, olej: null, pozn: '', dtod: '', dtdo: '' });
       if (metaEl) metaEl.textContent = 'Nová surovina';
       setEditMode(true);
       modal?.show();
@@ -245,7 +243,6 @@
           sh: readForm('sh'),
           sus_sh: readForm('sus_sh'),
           sus_hmot: readForm('sus_hmot'),
-          sus_obj: readForm('sus_obj'),
           okp: readForm('okp'),
           olej: readForm('olej'),
           pozn: readForm('pozn'),

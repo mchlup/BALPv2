@@ -12,7 +12,7 @@ try {
 
   $raw = file_get_contents('php://input'); $b = json_decode($raw,true) ?: [];
   $id = isset($b['id']) ? (int)$b['id'] : 0;
-  $fields = ['cislo','nazev','sh','sh_skut','sus_sh','sus_hmot','sus_obj','okp','kvn','olej','pozn','dt_akt_sloz','dtod','dtdo'];
+  $fields = ['cislo','nazev','sh','sh_skut','sus_sh','sus_hmot','okp','kvn','olej','pozn','dt_akt_sloz','dtod','dtdo'];
   $data = [];
   foreach ($fields as $f) { $data[$f] = array_key_exists($f,$b) ? ($b[$f]!==''?$b[$f]:null) : null; }
   if (!($data['nazev'] ?? '')) out(['error'=>'nazev is required'],400);
