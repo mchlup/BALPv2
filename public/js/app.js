@@ -257,6 +257,7 @@
 
       button.addEventListener('shown.bs.tab', () => {
         activeTabKey = key;
+        const entry = tabsState.get(key);
         ensureTabContent(key)
           .finally(() => emitTabReady(entry));
       });
