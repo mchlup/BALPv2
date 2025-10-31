@@ -36,16 +36,8 @@ try {
 
     $pdo = db();
 
-    $table = sql_quote_ident('balp_nhods_vyr');
-    $nhTable = sql_quote_ident(balp_nh_table_name());
-
-    $sql = "SELECT v.*, nh.cislo AS cislo_nh, nh.nazev AS nazev_nh
-            FROM $table AS v
-            LEFT JOIN $nhTable AS nh ON nh.id = v.idnh
-            WHERE v.id = :id LIMIT 1";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([':id' => $id]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $detail = nh_vyr_fetch_detail($pdo, $id);
+    $row = $detail['item'] ?? null;
     if (!$row) {
         http_response_code(404);
         echo 'error: not found';
@@ -66,6 +58,45 @@ try {
         $row['vyrobit_g'] ?? '',
         $row['poznamka'] ?? '',
     ], ';');
+
+    $lines = $detail['rows'] ?? [];
+    fputcsv($out, [], ';');
+    fputcsv($out, ['Receptura'], ';');
+    if ($lines) {
+        fputcsv($out, ['ID položky', 'Typ', 'Kód', 'Název', 'Množství (g/kg)'], ';');
+        foreach ($lines as $line) {
+            $qty = $line['mnozstvi'] ?? '';
+            if (is_numeric($qty)) {
+                $qty = (string)+$qty;
+            }
+            fputcsv($out, [
+                $line['id'] ?? '',
+                $line['typ'] ?? '',
+                $line['cislo'] ?? '',
+                $line['nazev'] ?? '',
+                $qty,
+            ], ';');
+        }
+    } else {
+        fputcsv($out, ['— žádné položky —'], ';');
+    }
+
+    $tests = $detail['zkousky'] ?? [];
+    fputcsv($out, [], ';');
+    fputcsv($out, ['Laboratorní zkoušky'], ';');
+    if ($tests) {
+        fputcsv($out, ['Parametr', 'Hodnota', 'Jednotka', 'Poznámka'], ';');
+        foreach ($tests as $test) {
+            fputcsv($out, [
+                $test['nazev'] ?? '',
+                $test['hodnota'] ?? '',
+                $test['jednotka'] ?? '',
+                $test['poznamka'] ?? '',
+            ], ';');
+        }
+    } else {
+        fputcsv($out, ['— žádné zkoušky —'], ';');
+    }
     fclose($out);
     exit;
 } catch (Throwable $e) {

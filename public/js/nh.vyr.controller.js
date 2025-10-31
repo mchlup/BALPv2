@@ -65,6 +65,10 @@
       copy: document.getElementById('nh-vyr-detail-copy'),
       exportCsv: document.getElementById('nh-vyr-detail-export-csv'),
       exportPdf: document.getElementById('nh-vyr-detail-export-pdf'),
+      recTable: $('#nh-vyr-detail-rec-table tbody'),
+      recEmpty: document.getElementById('nh-vyr-detail-rec-empty'),
+      zkTable: $('#nh-vyr-detail-zk-table tbody'),
+      zkEmpty: document.getElementById('nh-vyr-detail-zk-empty'),
     },
   };
 
@@ -111,7 +115,7 @@
   function renderRows(items) {
     if (!el.tableBody) return;
     if (!Array.isArray(items) || items.length === 0) {
-      el.tableBody.innerHTML = '<tr><td colspan="6"><em>Žádné výsledky.</em></td></tr>';
+      el.tableBody.innerHTML = '<tr><td colspan="7"><em>Žádné výsledky.</em></td></tr>';
       return;
     }
     const rows = items.map((row) => {
@@ -123,6 +127,7 @@
       const pozn = row.poznamka ?? '';
       const id = row.id ?? '';
       return `<tr data-id="${String(id)}" style="cursor:pointer">` +
+        `<td class="text-end">${id !== '' ? String(id) : ''}</td>` +
         `<td>${cisloVp || ''}</td>` +
         `<td>${datum}</td>` +
         `<td>${nh}</td>` +
@@ -314,18 +319,70 @@
     if (el.detail.vp) {
       el.detail.vp.dataset.vpDigits = sanitizeVpState(cisloVp);
     }
+
+    const recipe = Array.isArray(data?.rows) ? data.rows : [];
+    if (el.detail.recTable) {
+      if (recipe.length > 0) {
+        el.detail.recTable.innerHTML = recipe.map((item) => {
+          const type = item?.typ ?? '';
+          const code = item?.cislo ?? '';
+          const name = item?.nazev ?? '';
+          let qty = item?.mnozstvi ?? '';
+          if (typeof qty === 'number') {
+            qty = qty.toLocaleString('cs-CZ', { maximumFractionDigits: 3 });
+          }
+          return `<tr>` +
+            `<td>${type || ''}</td>` +
+            `<td>${code || ''}</td>` +
+            `<td>${name || ''}</td>` +
+            `<td class="text-end">${qty !== undefined && qty !== null ? String(qty) : ''}</td>` +
+          `</tr>`;
+        }).join('');
+        if (el.detail.recEmpty) el.detail.recEmpty.classList.add('d-none');
+      } else {
+        el.detail.recTable.innerHTML = '';
+        if (el.detail.recEmpty) el.detail.recEmpty.classList.remove('d-none');
+      }
+    }
+
+    const tests = Array.isArray(data?.zkousky) ? data.zkousky : [];
+    if (el.detail.zkTable) {
+      if (tests.length > 0) {
+        el.detail.zkTable.innerHTML = tests.map((item) => {
+          const name = item?.nazev ?? '';
+          const value = item?.hodnota ?? '';
+          const unit = item?.jednotka ?? '';
+          const note = item?.poznamka ?? '';
+          return `<tr>` +
+            `<td>${name || ''}</td>` +
+            `<td>${value || ''}</td>` +
+            `<td>${unit || ''}</td>` +
+            `<td>${note || ''}</td>` +
+          `</tr>`;
+        }).join('');
+        if (el.detail.zkEmpty) el.detail.zkEmpty.classList.add('d-none');
+      } else {
+        el.detail.zkTable.innerHTML = '';
+        if (el.detail.zkEmpty) el.detail.zkEmpty.classList.remove('d-none');
+      }
+    }
   }
 
   async function openDetail(id) {
+    const previousMeta = el.meta ? el.meta.textContent : '';
     try {
       setMeta('Načítám detail…');
       const data = await apiFetch(`${detailEndpoint}?id=${encodeURIComponent(id)}`);
       fillDetail(data);
       if (detailModal) detailModal.show();
-      setMeta('');
     } catch (e) {
       console.error(e);
       setMeta(e?.message || 'Chyba při načtení detailu');
+      return;
+    }
+    setMeta(previousMeta);
+  }
+
     }
   }
 

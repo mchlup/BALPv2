@@ -38,9 +38,10 @@ try {
         $offset = max(0, (int)($_GET['offset'] ?? 0));
     }
 
-    $table = sql_quote_ident('balp_nhods_vyr');
+    $table = sql_quote_ident(nh_vyr_table_name());
     $nhTable = sql_quote_ident(balp_nh_table_name());
-    $join = "LEFT JOIN $nhTable AS nh ON nh.id = v.idnh";
+    $fkToNh = nh_vyr_vyr_nh_fk($pdo);
+    $join = "LEFT JOIN $nhTable AS nh ON nh.id = v." . sql_quote_ident($fkToNh);
 
     $where = [];
     $params = [];

@@ -28,17 +28,8 @@ try {
 
     $pdo = db();
 
-    $table = sql_quote_ident('balp_nhods_vyr');
-    $nhTable = sql_quote_ident(balp_nh_table_name());
-
-    $sql = "SELECT v.*, nh.cislo AS cislo_nh, nh.nazev AS nazev_nh
-            FROM $table AS v
-            LEFT JOIN $nhTable AS nh ON nh.id = v.idnh
-            WHERE v.id = :id LIMIT 1";
-
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([':id' => $id]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $detail = nh_vyr_fetch_detail($pdo, $id);
+    $row = $detail['item'] ?? null;
     if (!$row) {
         respond_json(['error' => 'not found'], 404);
     }
@@ -48,8 +39,20 @@ try {
         $row['datum_vyroby'] = substr((string)$row['datum_vyroby'], 0, 10);
     }
 
+    $lines = $detail['rows'] ?? [];
+    foreach ($lines as &$line) {
+        if (isset($line['mnozstvi']) && $line['mnozstvi'] !== null) {
+            $line['mnozstvi'] = is_numeric($line['mnozstvi']) ? (float)$line['mnozstvi'] : $line['mnozstvi'];
+        }
+    }
+    unset($line);
+
+    $tests = $detail['zkousky'] ?? [];
+
     echo json_encode([
         'item' => $row,
+        'rows' => $lines,
+        'zkousky' => $tests,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
 } catch (Throwable $e) {
     http_response_code(500);

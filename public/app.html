@@ -174,10 +174,11 @@
             <table class="table table-sm table-striped align-middle" id="nh-vyr-table">
               <thead>
                 <tr>
+                  <th scope="col" data-col="id" class="sortable text-end">ID</th>
                   <th scope="col" data-col="cislo_vp" class="sortable">Číslo VP</th>
                   <th scope="col" data-col="datum_vyroby" class="sortable">Datum výroby</th>
                   <th scope="col" data-col="cislo_nh" class="sortable">Číslo NH</th>
-                  <th scope="col">Název</th>
+                  <th scope="col" data-col="nazev_nh" class="sortable">Název</th>
                   <th scope="col" data-col="vyrobit_g" class="sortable text-end">Vyrobit (g)</th>
                   <th scope="col">Poznámka</th>
                 </tr>
@@ -463,6 +464,40 @@
             <dt class="col-sm-4">Poznámka</dt>
             <dd class="col-sm-8" id="nh-vyr-detail-poznamka">—</dd>
           </dl>
+          <div class="mt-4">
+            <h6 class="mb-2">Receptura</h6>
+            <div class="table-responsive">
+              <table class="table table-sm table-striped mb-0" id="nh-vyr-detail-rec-table">
+                <thead>
+                  <tr>
+                    <th scope="col" style="width: 15%;">Typ</th>
+                    <th scope="col" style="width: 20%;">Kód</th>
+                    <th scope="col">Název</th>
+                    <th scope="col" class="text-end" style="width: 15%;">g / kg</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div class="text-muted small py-2" id="nh-vyr-detail-rec-empty">Žádné položky.</div>
+          </div>
+          <div class="mt-4">
+            <h6 class="mb-2">Laboratorní zkoušky</h6>
+            <div class="table-responsive">
+              <table class="table table-sm table-striped mb-0" id="nh-vyr-detail-zk-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Parametr</th>
+                    <th scope="col" style="width: 20%;">Hodnota</th>
+                    <th scope="col" style="width: 15%;">Jednotka</th>
+                    <th scope="col">Poznámka</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div class="text-muted small py-2" id="nh-vyr-detail-zk-empty">Žádné záznamy.</div>
+          </div>
         </div>
         <div class="modal-footer">
           <div class="btn-group me-auto" role="group">

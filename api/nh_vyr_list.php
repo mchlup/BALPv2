@@ -34,16 +34,18 @@ try {
     $vpFromDigits = nh_vyr_normalize_vp_digits($vpFromRaw);
     $vpToDigits   = nh_vyr_normalize_vp_digits($vpToRaw);
 
-    $table = sql_quote_ident('balp_nhods_vyr');
+    $table = sql_quote_ident(nh_vyr_table_name());
     $nhTable = sql_quote_ident(balp_nh_table_name());
     $alias = 'v';
-    $join = "LEFT JOIN $nhTable AS nh ON nh.id = v.idnh";
+    $fkToNh = nh_vyr_vyr_nh_fk($pdo);
+    $join = "LEFT JOIN $nhTable AS nh ON nh.id = v." . sql_quote_ident($fkToNh);
 
     $columns = [
         'id' => 'v.id',
         'cislo_vp' => nh_vyr_digits_expr($alias),
         'datum_vyroby' => 'v.datum_vyroby',
         'cislo_nh' => 'nh.cislo',
+        'nazev_nh' => 'nh.nazev',
         'vyrobit_g' => 'v.vyrobit_g',
         'poznamka' => 'v.poznamka',
     ];
@@ -81,7 +83,7 @@ try {
 
     $orderSql = $orderExpr . ' ' . $sortDir;
 
-    $selectSql = "SELECT v.id, v.cislo_vp, v.datum_vyroby, v.vyrobit_g, v.poznamka, v.idnh,
+    $selectSql = "SELECT v.id, v.cislo_vp, v.datum_vyroby, v.vyrobit_g, v.poznamka, v." . sql_quote_ident($fkToNh) . " AS idnh,
         nh.cislo AS cislo_nh, nh.nazev AS nazev_nh
         FROM $table AS v
         $join

@@ -33,9 +33,10 @@ try {
     $vpFrom = nh_vyr_normalize_vp_digits($_GET['vp_od'] ?? $_GET['od'] ?? null);
     $vpTo   = nh_vyr_normalize_vp_digits($_GET['vp_do'] ?? $_GET['do'] ?? null);
 
-    $table = sql_quote_ident('balp_nhods_vyr');
+    $table = sql_quote_ident(nh_vyr_table_name());
     $nhTable = sql_quote_ident(balp_nh_table_name());
-    $join = "LEFT JOIN $nhTable AS nh ON nh.id = v.idnh";
+    $fkToNh = nh_vyr_vyr_nh_fk($pdo);
+    $join = "LEFT JOIN $nhTable AS nh ON nh.id = v." . sql_quote_ident($fkToNh);
 
     $where = [];
     $params = [];
@@ -49,7 +50,7 @@ try {
     }
     $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 
-    $sql = "SELECT v.cislo_vp, v.datum_vyroby, nh.cislo AS cislo_nh, nh.nazev AS nazev_nh, v.vyrobit_g, v.poznamka
+    $sql = "SELECT v.id, v.cislo_vp, v.datum_vyroby, nh.cislo AS cislo_nh, nh.nazev AS nazev_nh, v.vyrobit_g, v.poznamka
             FROM $table AS v
             $join
             $whereSql
@@ -66,11 +67,11 @@ try {
     $lines[] = 'Výrobní příkazy NH';
     $lines[] = 'Generováno: ' . date('d.m.Y H:i');
     $lines[] = '';
-    $lines[] = 'Číslo VP | Datum výroby | Číslo NH | Název NH | Vyrobit (g) | Poznámka';
+    $lines[] = 'ID | Číslo VP | Datum výroby | Číslo NH | Název NH | Vyrobit (g) | Poznámka';
     foreach ($rows as $row) {
         $cisloVp = nh_vyr_format_vp($row['cislo_vp'] ?? null) ?? ($row['cislo_vp'] ?? '');
         $datum = isset($row['datum_vyroby']) && $row['datum_vyroby'] ? substr((string)$row['datum_vyroby'], 0, 10) : '';
-        $line = $cisloVp . ' | ' . $datum . ' | ' . ($row['cislo_nh'] ?? '') . ' | '
+        $line = ($row['id'] ?? '') . ' | ' . $cisloVp . ' | ' . $datum . ' | ' . ($row['cislo_nh'] ?? '') . ' | '
             . ($row['nazev_nh'] ?? '') . ' | ' . ($row['vyrobit_g'] ?? '') . ' | ' . ($row['poznamka'] ?? '');
         $lines[] = $line;
     }

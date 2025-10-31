@@ -37,16 +37,8 @@ try {
 
     $pdo = db();
 
-    $table = sql_quote_ident('balp_nhods_vyr');
-    $nhTable = sql_quote_ident(balp_nh_table_name());
-
-    $sql = "SELECT v.*, nh.cislo AS cislo_nh, nh.nazev AS nazev_nh
-            FROM $table AS v
-            LEFT JOIN $nhTable AS nh ON nh.id = v.idnh
-            WHERE v.id = :id LIMIT 1";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([':id' => $id]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $detail = nh_vyr_fetch_detail($pdo, $id);
+    $row = $detail['item'] ?? null;
     if (!$row) {
         http_response_code(404);
         echo balp_simple_pdf(['Záznam nebyl nalezen.'], 'Chyba');
@@ -58,12 +50,67 @@ try {
 
     $lines = [];
     $lines[] = 'Výrobní příkaz NH';
+    $lines[] = 'ID: ' . ($row['id'] ?? '');
     $lines[] = 'Číslo VP: ' . $cisloVp;
     $lines[] = 'Datum výroby: ' . $datum;
     $lines[] = 'Číslo NH: ' . ($row['cislo_nh'] ?? '');
     $lines[] = 'Název NH: ' . ($row['nazev_nh'] ?? '');
     $lines[] = 'Vyrobit (g): ' . ($row['vyrobit_g'] ?? '');
     $lines[] = 'Poznámka: ' . ($row['poznamka'] ?? '');
+
+    $recipe = $detail['rows'] ?? [];
+    $lines[] = '';
+    $lines[] = 'Receptura:';
+    if ($recipe) {
+        foreach ($recipe as $item) {
+            $qty = $item['mnozstvi'] ?? '';
+            if (is_numeric($qty)) {
+                $qty = (string)+$qty;
+            }
+            $type = $item['typ'] ?? '';
+            $code = trim((string)($item['cislo'] ?? ''));
+            $name = trim((string)($item['nazev'] ?? ''));
+            $parts = [];
+            if ($type !== '') {
+                $parts[] = $type;
+            }
+            if ($code !== '') {
+                $parts[] = $code;
+            }
+            $label = $parts ? implode(' ', $parts) : 'Položka';
+            if ($name !== '') {
+                $label .= ' – ' . $name;
+            }
+            $lines[] = '  ' . $label . ($qty !== '' ? ': ' . $qty . ' g/kg' : '');
+        }
+    } else {
+        $lines[] = '  — žádné položky —';
+    }
+
+    $tests = $detail['zkousky'] ?? [];
+    $lines[] = '';
+    $lines[] = 'Laboratorní zkoušky:';
+    if ($tests) {
+        foreach ($tests as $test) {
+            $name = $test['nazev'] ?? '';
+            $value = $test['hodnota'] ?? '';
+            $unit = $test['jednotka'] ?? '';
+            $note = $test['poznamka'] ?? '';
+            $line = '  ' . ($name !== '' ? $name : 'Parametr');
+            if ($value !== '') {
+                $line .= ': ' . $value;
+                if ($unit !== '') {
+                    $line .= ' ' . $unit;
+                }
+            }
+            if ($note !== '') {
+                $line .= ' (' . $note . ')';
+            }
+            $lines[] = $line;
+        }
+    } else {
+        $lines[] = '  — žádné záznamy —';
+    }
 
     echo balp_simple_pdf($lines, 'Výrobní příkaz ' . $cisloVp);
     exit;
