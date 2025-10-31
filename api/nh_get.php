@@ -24,27 +24,27 @@ try {
     balp_ensure_nh_table($pdo);
     $nhTable = sql_quote_ident(balp_nh_table_name());
     $nhAlias = 'nh';
-    $vpExpr = balp_nh_vp_expression($pdo, $nhAlias);
+    $vtExpr = balp_nh_vp_expression($pdo, $nhAlias);
     $id = (int)($_GET['id'] ?? 0);
     if ($id <= 0) {
         respond_json(['error' => 'missing id'], 400);
     }
 
-    $hasCisloVp = strtoupper($vpExpr) !== 'NULL';
+    $hasCisloVt = strtoupper($vtExpr) !== 'NULL';
     $idCol = "$nhAlias." . sql_quote_ident('id');
     $cisloCol = "$nhAlias." . sql_quote_ident('cislo');
     $nazevCol = "$nhAlias." . sql_quote_ident('nazev');
     $poznCol = "$nhAlias." . sql_quote_ident('pozn');
     $dtodCol = "$nhAlias." . sql_quote_ident('dtod');
     $dtdoCol = "$nhAlias." . sql_quote_ident('dtdo');
-    $vpSelect = $hasCisloVp
-        ? '(' . $vpExpr . ') AS ' . sql_quote_ident('cislo_vp')
-        : 'NULL AS ' . sql_quote_ident('cislo_vp');
+    $vtSelect = $hasCisloVt
+        ? '(' . $vtExpr . ') AS ' . sql_quote_ident('cislo_vt')
+        : 'NULL AS ' . sql_quote_ident('cislo_vt');
 
     $stmt = $pdo->prepare('SELECT '
         . "$idCol AS id, "
         . "$cisloCol AS cislo, "
-        . "$vpSelect, "
+        . "$vtSelect, "
         . "$nazevCol AS nazev, "
         . "$poznCol AS pozn, "
         . "$dtodCol AS dtod, "
@@ -55,8 +55,11 @@ try {
         respond_json(['error' => 'not found'], 404);
     }
 
+    if (!array_key_exists('cislo_vt', $row)) {
+        $row['cislo_vt'] = null;
+    }
     if (!array_key_exists('cislo_vp', $row)) {
-        $row['cislo_vp'] = null;
+        $row['cislo_vp'] = $row['cislo_vt'];
     }
 
     $row['kod'] = $row['cislo'];

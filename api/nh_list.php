@@ -24,8 +24,8 @@ try {
     balp_ensure_nh_table($pdo);
     $nhTable = sql_quote_ident(balp_nh_table_name());
     $nhAlias = 'nh';
-    $vpExpr = balp_nh_vp_expression($pdo, $nhAlias);
-    $hasCisloVp = strtoupper($vpExpr) !== 'NULL';
+    $vtExpr = balp_nh_vp_expression($pdo, $nhAlias);
+    $hasCisloVt = strtoupper($vtExpr) !== 'NULL';
 
     $limit = max(1, min(200, (int)($_GET['limit'] ?? 50)));
     $offset = max(0, (int)($_GET['offset'] ?? 0));
@@ -52,8 +52,8 @@ try {
     if (balp_nh_has_column($pdo, 'kategorie_id')) {
         $sortColumns['kategorie_id'] = $katCol;
     }
-    if ($hasCisloVp) {
-        $sortColumns['cislo_vp'] = sql_quote_ident('cislo_vp');
+    if ($hasCisloVt) {
+        $sortColumns['cislo_vt'] = sql_quote_ident('cislo_vt');
     }
     if (!isset($sortColumns[$sortCol])) {
         $sortCol = 'cislo';
@@ -92,8 +92,8 @@ try {
             "$nazevCol LIKE :search",
             "$poznCol LIKE :search",
         ];
-        if ($hasCisloVp) {
-            $searchParts[] = '(' . $vpExpr . ') LIKE :search';
+        if ($hasCisloVt) {
+            $searchParts[] = '(' . $vtExpr . ') LIKE :search';
         }
         $where[] = '(' . implode(' OR ', $searchParts) . ')';
     }
@@ -127,13 +127,13 @@ try {
     $countStmt->execute();
     $total = (int)$countStmt->fetchColumn();
 
-    $vpSelect = $hasCisloVp
-        ? '(' . $vpExpr . ') AS ' . sql_quote_ident('cislo_vp')
-        : 'NULL AS ' . sql_quote_ident('cislo_vp');
+    $vtSelect = $hasCisloVt
+        ? '(' . $vtExpr . ') AS ' . sql_quote_ident('cislo_vt')
+        : 'NULL AS ' . sql_quote_ident('cislo_vt');
     $sql = 'SELECT '
         . "$idCol AS id, "
         . "$cisloCol AS cislo, "
-        . "$vpSelect, "
+        . "$vtSelect, "
         . "$nazevCol AS nazev, "
         . "$poznCol AS pozn, "
         . "$dtodCol AS dtod, "
@@ -151,8 +151,11 @@ try {
     foreach ($rows as &$row) {
         $row['kod'] = $row['cislo'];
         $row['name'] = $row['nazev'];
+        if (!array_key_exists('cislo_vt', $row)) {
+            $row['cislo_vt'] = null;
+        }
         if (!array_key_exists('cislo_vp', $row)) {
-            $row['cislo_vp'] = null;
+            $row['cislo_vp'] = $row['cislo_vt'];
         }
     }
     unset($row);
