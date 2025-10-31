@@ -149,6 +149,7 @@
         const cssAssets = [];
         if (Array.isArray(module.assets?.css)) cssAssets.push(...module.assets.css);
         if (Array.isArray(module.ui?.assets?.css)) cssAssets.push(...module.ui.assets.css);
+        if (Array.isArray(tab.assets?.css)) cssAssets.push(...tab.assets.css);
         await Promise.all(cssAssets.map(ensureCss));
 
         if (tab.view) {
@@ -162,6 +163,7 @@
         const jsAssets = [];
         if (Array.isArray(module.assets?.js)) jsAssets.push(...module.assets.js);
         if (Array.isArray(module.ui?.assets?.js)) jsAssets.push(...module.ui.assets.js);
+        if (Array.isArray(tab.assets?.js)) jsAssets.push(...tab.assets.js);
         for (const asset of jsAssets) {
           await ensureScript(asset);
         }
