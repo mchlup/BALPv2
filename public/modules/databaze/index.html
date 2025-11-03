@@ -1,0 +1,88 @@
+<div class="p-3" id="database-module">
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-3">
+    <div>
+      <h5 class="mb-1">Správa databáze</h5>
+      <p class="text-muted mb-0">Nastavte připojení k databázi, otestujte komunikaci a proveďte základní údržbu.</p>
+    </div>
+    <div class="btn-group">
+      <button type="button" class="btn btn-outline-secondary btn-sm" data-action="reload">Načíst z konfigurace</button>
+      <button type="submit" form="db-settings-form" class="btn btn-primary btn-sm">Uložit nastavení</button>
+    </div>
+  </div>
+
+  <div id="db-alert" class="alert d-none" role="alert"></div>
+
+  <form id="db-settings-form" class="border rounded-3 p-3 mb-4">
+    <h6 class="mb-3">Připojení</h6>
+    <div class="row g-3">
+      <div class="col-sm-6 col-lg-4">
+        <label class="form-label" for="db-driver">Driver</label>
+        <input type="text" class="form-control" id="db-driver" autocomplete="off" placeholder="mysql">
+      </div>
+      <div class="col-sm-6 col-lg-4">
+        <label class="form-label" for="db-host">Host</label>
+        <input type="text" class="form-control" id="db-host" autocomplete="off" placeholder="127.0.0.1">
+      </div>
+      <div class="col-sm-6 col-lg-4">
+        <label class="form-label" for="db-port">Port</label>
+        <input type="number" class="form-control" id="db-port" min="1" step="1" placeholder="3306">
+      </div>
+    </div>
+    <div class="row g-3 mt-0">
+      <div class="col-sm-6 col-lg-4">
+        <label class="form-label" for="db-database">Databáze</label>
+        <input type="text" class="form-control" id="db-database" autocomplete="off" placeholder="balp_new">
+      </div>
+      <div class="col-sm-6 col-lg-4">
+        <label class="form-label" for="db-username">Uživatel</label>
+        <input type="text" class="form-control" id="db-username" autocomplete="off" placeholder="root">
+      </div>
+      <div class="col-sm-6 col-lg-4">
+        <label class="form-label" for="db-password">Heslo</label>
+        <input type="password" class="form-control" id="db-password" autocomplete="off" placeholder="••••">
+      </div>
+    </div>
+    <div class="row g-3 mt-0">
+      <div class="col-sm-6 col-lg-4">
+        <label class="form-label" for="db-charset">Znaková sada</label>
+        <input type="text" class="form-control" id="db-charset" autocomplete="off" placeholder="utf8mb4">
+      </div>
+      <div class="col-sm-6 col-lg-4">
+        <label class="form-label" for="db-collation">Kolace</label>
+        <input type="text" class="form-control" id="db-collation" autocomplete="off" placeholder="utf8mb4_czech_ci">
+      </div>
+      <div class="col-sm-12 col-lg-4">
+        <label class="form-label" for="db-dsn">DSN (volitelné)</label>
+        <input type="text" class="form-control" id="db-dsn" autocomplete="off" placeholder="mysql:host=...">
+        <div class="form-text">Pokud ponecháte prázdné, DSN se vygeneruje z polí výše.</div>
+      </div>
+    </div>
+  </form>
+
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="border rounded-3 p-3 h-100">
+        <h6 class="mb-3">Test připojení</h6>
+        <p class="small text-muted">Použije aktuálně vyplněné údaje k ověření spojení s databází.</p>
+        <div class="d-flex gap-2 mb-3">
+          <button type="button" class="btn btn-outline-primary btn-sm" data-action="test-connection">Otestovat</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-action="show-dsn">Zobrazit DSN</button>
+        </div>
+        <pre class="bg-light border rounded-3 p-2 small mb-0" id="db-test-output">Zatím neproběhl žádný test.</pre>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="border rounded-3 p-3 h-100">
+        <h6 class="mb-3">Záloha a obnova</h6>
+        <p class="small text-muted">Vytvořte JSON zálohu databáze nebo obnovte data ze souboru.</p>
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          <button type="button" class="btn btn-outline-success btn-sm" data-action="backup">Vytvořit zálohu</button>
+          <button type="button" class="btn btn-outline-danger btn-sm" data-action="restore">Obnovit ze souboru</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-action="optimize">Optimalizovat tabulky</button>
+        </div>
+        <input type="file" id="db-restore-file" class="d-none" accept="application/json,.json">
+        <div id="db-maintenance-output" class="small text-muted">Zatím neproběhla žádná operace.</div>
+      </div>
+    </div>
+  </div>
+</div>

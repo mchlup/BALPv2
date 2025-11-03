@@ -1,0 +1,92 @@
+<div class="p-3" id="settings-module">
+  <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2 mb-3">
+    <div>
+      <h5 class="mb-1">Konfigurace aplikace</h5>
+      <p class="text-muted mb-0">Upravte obecná nastavení, autentizaci a mapování tabulek. Změny se uloží do souboru <code>config/config.php</code>.</p>
+    </div>
+    <div class="btn-group">
+      <button type="button" class="btn btn-outline-secondary btn-sm" data-action="reload">Načíst znovu</button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" data-action="reset">Zrušit změny</button>
+      <button type="submit" form="settings-form" class="btn btn-primary btn-sm">Uložit nastavení</button>
+    </div>
+  </div>
+
+  <div id="settings-alert" class="alert d-none" role="alert"></div>
+
+  <form id="settings-form" class="settings-form">
+    <div class="mb-4">
+      <label for="cfg-app-url" class="form-label">Adresa aplikace (App URL)</label>
+      <input type="text" class="form-control" id="cfg-app-url" name="app_url" autocomplete="off" placeholder="/balp2">
+      <div class="form-text">Používá se pro přesměrování uživatelů na klientskou část.</div>
+    </div>
+
+    <div class="border rounded-3 p-3 mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="mb-0">Autentizace</h6>
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" role="switch" id="cfg-auth-enabled">
+          <label class="form-check-label" for="cfg-auth-enabled">Vyžadovat přihlášení</label>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-sm-6 col-lg-3">
+          <label class="form-label" for="cfg-auth-user-table">Tabulka uživatelů</label>
+          <input type="text" class="form-control" id="cfg-auth-user-table" autocomplete="off">
+        </div>
+        <div class="col-sm-6 col-lg-3">
+          <label class="form-label" for="cfg-auth-username-field">Sloupec uživatele</label>
+          <input type="text" class="form-control" id="cfg-auth-username-field" autocomplete="off">
+        </div>
+        <div class="col-sm-6 col-lg-3">
+          <label class="form-label" for="cfg-auth-password-field">Sloupec hesla</label>
+          <input type="text" class="form-control" id="cfg-auth-password-field" autocomplete="off">
+        </div>
+        <div class="col-sm-6 col-lg-3">
+          <label class="form-label" for="cfg-auth-role-field">Sloupec role (volitelné)</label>
+          <input type="text" class="form-control" id="cfg-auth-role-field" autocomplete="off" placeholder="např. role">
+        </div>
+      </div>
+
+      <div class="row g-3 mt-0">
+        <div class="col-sm-6 col-lg-3">
+          <label class="form-label" for="cfg-auth-password-algo">Algoritmus hesla</label>
+          <select class="form-select" id="cfg-auth-password-algo">
+            <option value="bcrypt">bcrypt</option>
+            <option value="md5">MD5 (hex)</option>
+            <option value="md5_raw16">MD5 (RAW16)</option>
+            <option value="old_password">MySQL OLD_PASSWORD</option>
+            <option value="plaintext">Bez hashování</option>
+          </select>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+          <label class="form-label" for="cfg-auth-login-scheme">Schéma přihlášení</label>
+          <select class="form-select" id="cfg-auth-login-scheme">
+            <option value="usr_is_plain">Uživatel je zadán přímo</option>
+            <option value="usr_is_md5_username">MD5 uživatelského jména</option>
+            <option value="usr_is_md5_lower">MD5(lower(username))</option>
+            <option value="usr_is_md5_upper">MD5(UPPER(username))</option>
+          </select>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+          <label class="form-label" for="cfg-auth-jwt-secret">JWT tajemství</label>
+          <input type="text" class="form-control" id="cfg-auth-jwt-secret" autocomplete="off">
+          <div class="form-text">Používá se pro podepisování tokenů.</div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+          <label class="form-label" for="cfg-auth-jwt-ttl">Platnost tokenu (minuty)</label>
+          <input type="number" class="form-control" id="cfg-auth-jwt-ttl" min="1" step="1">
+        </div>
+      </div>
+    </div>
+
+    <div class="border rounded-3 p-3">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="mb-0">Mapování tabulek</h6>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-action="add-table">Přidat mapování</button>
+      </div>
+      <div id="cfg-table-rows" class="d-flex flex-column gap-2"></div>
+      <div class="form-text">Přidejte interní kódy modulů a názvy jejich databázových tabulek.</div>
+    </div>
+  </form>
+</div>

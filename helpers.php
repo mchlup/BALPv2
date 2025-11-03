@@ -219,4 +219,153 @@ function balp_old_password_raw(string $pwd, ?PDO $pdo = null): string {
     $raw = hex2bin($hex);
     return $raw === false ? '' : $raw;
 }
+
+function balp_config_path(): string
+{
+    return __DIR__ . '/config/config.php';
+}
+
+function balp_sample_config(): array
+{
+    static $sample = null;
+    if ($sample === null) {
+        $sampleFile = __DIR__ . '/config/config.sample.php';
+        $loaded = file_exists($sampleFile) ? include $sampleFile : [];
+        $sample = is_array($loaded) ? $loaded : [];
+    }
+    return $sample;
+}
+
+function balp_normalize_config(array $config): array
+{
+    $defaults = balp_sample_config();
+    $normalized = array_replace_recursive($defaults, $config);
+
+    $normalized['app_url'] = isset($normalized['app_url'])
+        ? trim((string)$normalized['app_url'])
+        : '';
+
+    $dbDefaults = [
+        'driver' => 'mysql',
+        'host' => '127.0.0.1',
+        'port' => 3306,
+        'database' => 'balp_new',
+        'username' => 'root',
+        'password' => '',
+        'charset' => 'utf8mb4',
+        'collation' => 'utf8mb4_czech_ci',
+    ];
+    $db = $normalized['db'] ?? [];
+    if (!is_array($db)) {
+        $db = [];
+    }
+    $db = array_replace($dbDefaults, $db);
+    $db['port'] = (int)($db['port'] ?? 3306);
+    if ($db['port'] <= 0) {
+        $db['port'] = 3306;
+    }
+    $dsn = '';
+    if (array_key_exists('db_dsn', $config)) {
+        $dsn = trim((string)$config['db_dsn']);
+    } elseif (array_key_exists('db_dsn', $normalized)) {
+        $dsn = trim((string)$normalized['db_dsn']);
+    }
+    if ($dsn === '') {
+        $dsn = sprintf(
+            '%s:host=%s;port=%d;dbname=%s;charset=%s',
+            $db['driver'] ?? 'mysql',
+            $db['host'] ?? '127.0.0.1',
+            $db['port'],
+            $db['database'] ?? 'balp_new',
+            $db['charset'] ?? 'utf8mb4'
+        );
+    }
+
+    $dbUser = array_key_exists('db_user', $config) ? (string)$config['db_user'] : (string)($db['username'] ?? '');
+    if ($dbUser === '' && isset($db['username'])) {
+        $dbUser = (string)$db['username'];
+    }
+    $dbPass = array_key_exists('db_pass', $config) ? (string)$config['db_pass'] : (string)($db['password'] ?? '');
+    if ($dbPass === '' && isset($db['password'])) {
+        $dbPass = (string)$db['password'];
+    }
+
+    $db['username'] = $dbUser;
+    $db['password'] = $dbPass;
+    $normalized['db'] = $db;
+    $normalized['db_dsn'] = $dsn;
+    $normalized['db_user'] = $dbUser;
+    $normalized['db_pass'] = $dbPass;
+
+    $authDefaults = [
+        'enabled' => false,
+        'user_table' => 'balp_usr',
+        'username_field' => 'usr',
+        'password_field' => 'psw',
+        'role_field' => null,
+        'password_algo' => 'old_password',
+        'login_scheme' => 'usr_is_plain',
+        'jwt_secret' => 'change_me',
+        'jwt_ttl_minutes' => 120,
+    ];
+    $auth = $normalized['auth'] ?? [];
+    if (!is_array($auth)) {
+        $auth = [];
+    }
+    $auth = array_replace($authDefaults, $auth);
+    $auth['enabled'] = !empty($auth['enabled']);
+    $auth['jwt_ttl_minutes'] = (int)($auth['jwt_ttl_minutes'] ?? 120);
+    if ($auth['jwt_ttl_minutes'] <= 0) {
+        $auth['jwt_ttl_minutes'] = 120;
+    }
+    $normalized['auth'] = $auth;
+
+    $tables = $normalized['tables'] ?? [];
+    if (!is_array($tables)) {
+        $tables = [];
+    }
+    ksort($tables);
+    $normalized['tables'] = $tables;
+
+    return $normalized;
+}
+
+function balp_write_config(array $config): array
+{
+    $normalized = balp_normalize_config($config);
+    $path = balp_config_path();
+    $dir = dirname($path);
+    if (!is_dir($dir)) {
+        if (!@mkdir($dir, 0775, true) && !is_dir($dir)) {
+            throw new RuntimeException(sprintf('Nepodařilo se vytvořit složku pro konfiguraci: %s', $dir));
+        }
+    }
+
+    $export = var_export($normalized, true);
+    $content = <<<PHP
+<?php
+// Tento soubor byl automaticky vygenerován modulem Nastavení dne %s.
+\$config = %s;
+\$CONFIG = \$config;
+return \$config;
+
+PHP;
+    $payload = sprintf($content, date('c'), $export);
+    if (@file_put_contents($path, $payload) === false) {
+        throw new RuntimeException(sprintf('Nepodařilo se zapsat konfiguraci do %s', $path));
+    }
+    return $normalized;
+}
+
+function balp_require_authenticated_user(): array
+{
+    if (!has_auth()) {
+        return ['sub' => 'anonymous', 'role' => null];
+    }
+    $user = auth_user();
+    if (!$user) {
+        respond_json(['error' => 'Vyžadováno přihlášení.'], 401);
+    }
+    return $user;
+}
 ?>
