@@ -757,6 +757,12 @@
 
   const ensureTabLoaded = (force = false) => {
     if (!el.pane) return;
+    // NEPOSÍLAT na API bez tokenu – zamezí 500 z backendu
+    const t = getToken && getToken();
+    if (!t) {
+      // Počkej až se auth připraví – nasloucháme vlastní události
+      return;
+    }
     const firstTime = !el.pane.classList.contains('loaded');
     if (firstTime) {
       el.pane.classList.add('loaded');
@@ -777,12 +783,18 @@
   try {
     document.addEventListener('shown.bs.tab', onShown);
   } catch {}
+  // Debounce + filtr na duplikované spouštění
+  let _tabShownTimer = null;
   document.addEventListener('balp:tab-shown', (ev) => {
     if (!ev?.detail) return;
     if (ev.detail.tab !== 'nh-vyroba') return;
-    ensureTabLoaded(Boolean(ev.detail.refresh));
+    clearTimeout(_tabShownTimer);
+    _tabShownTimer = setTimeout(() => {
+      ensureTabLoaded(Boolean(ev.detail.refresh));
+    }, 0);
   });
-  if (el.tabBtn && el.tabBtn.classList.contains('active')) {
-    onShown({ target: el.tabBtn });
-  }
+  // Aktivní záložka: spustíme až po AUTH signálu, aby byl k dispozici token
+  const ready = () => { if (el.tabBtn && el.tabBtn.classList.contains('active')) onShown({ target: el.tabBtn }); };
+  if (getToken && getToken()) ready();
+  document.addEventListener('auth:ready', ready, { once: true });
 })();
