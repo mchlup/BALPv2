@@ -859,4 +859,8 @@
     };
     document.addEventListener('auth:ready', waitForAuth);
   }
+
+  if ((el.tabBtn && el.tabBtn.classList.contains('active')) || (el.pane && el.pane.classList.contains('active'))) {
+    setTimeout(() => ensureTabLoaded(true), 0);
+  }
 })();

@@ -7,6 +7,7 @@ return [
     'assets' => [
         'js' => [
             'js/nastaveni.controller.js',
+            'js/databaze.controller.js',
         ],
     ],
     'ui' => [
@@ -27,6 +28,14 @@ return [
                 'view' => 'modules/nastaveni/users.html',
                 'tab_id' => 'tab-uzivatele',
                 'pane_id' => 'pane-uzivatele',
+            ],
+            [
+                'slug' => 'databaze',
+                'label' => 'Databáze',
+                'order' => 30,
+                'view' => 'modules/databaze/index.html',
+                'tab_id' => 'tab-databaze',
+                'pane_id' => 'pane-databaze',
             ],
         ],
     ],
