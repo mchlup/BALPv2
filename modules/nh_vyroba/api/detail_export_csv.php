@@ -3,7 +3,7 @@ require_once balp_api_path('auth_helpers.php');
 require_once balp_api_path('jwt_helper.php');
 require_once balp_project_root() . '/helpers.php';
 balp_include_module_include('naterove_hmoty', 'helpers');
-balp_include_module_include('naterove_hmoty', 'vyroba_helpers');
+balp_include_module_include('nh_vyroba', 'helpers');
 
 header('Content-Type: text/csv; charset=utf-8');
 $filename = 'balp_vyrobni_prikaz_' . date('Ymd_His') . '.csv';

@@ -16,7 +16,8 @@ K dispozici jsou předpřipravené moduly:
 
 - `modules/polotovary` — polotovary a výrobní příkazy,
 - `modules/suroviny` — správa surovin,
-- `modules/naterove_hmoty` — nátěrové hmoty (včetně výrobních exportů).
+- `modules/naterove_hmoty` — evidence nátěrových hmot.
+- `modules/nh_vyroba` — výrobní příkazy pro nátěrové hmoty.
 
 Moduly se registrují automaticky pomocí `modules/bootstrap.php`. Jakýkoli skript v
 `api/` je pouze tenký vstupní bod, který zavolá funkci
