@@ -294,8 +294,9 @@
   function openNewModal() {
     resetNewForm();
     prefillNextVp();
-    if (newModal) {
-      newModal.show();
+    const modalInstance = getNewModalInstance();
+    if (modalInstance) {
+      modalInstance.show();
       setTimeout(() => {
         if (el.newCisloVp) {
           el.newCisloVp.focus();
@@ -342,7 +343,7 @@
   }
 
   async function load(force = false) {
-    if (state.loading && !force) return;
+    if (state.loading && !force) return false;
     state.loading = true;
     setMeta('Načítám…');
     try {
@@ -365,9 +366,13 @@
         setMeta('Žádné záznamy.');
       }
       updatePager();
+      if (el.pane) el.pane.classList.add('loaded');
+      return true;
     } catch (e) {
       console.error(e);
       setMeta(e?.message || 'Chyba při načítání');
+      if (el.pane) el.pane.classList.remove('loaded');
+      return false;
     } finally {
       state.loading = false;
     }
@@ -525,7 +530,12 @@
           body: JSON.stringify(payload),
         });
         const newId = result?.id ?? result?.item?.id ?? null;
-        if (newModal) newModal.hide();
+        const modalInstance = getNewModalInstance();
+        if (modalInstance) {
+          modalInstance.hide();
+        } else if (el.newModalEl) {
+          el.newModalEl.classList.remove('show');
+        }
         resetNewForm();
         state.offset = 0;
         await load(true);
@@ -596,13 +606,31 @@
   if (el.exportCsv) el.exportCsv.addEventListener('click', () => openExport(exportCsvEndpoint));
   if (el.exportPdf) el.exportPdf.addEventListener('click', () => openExport(exportPdfEndpoint));
 
-  let newModal = null;
-  if (el.newModalEl) {
+  const resolveModalCtor = () => {
     if (window.bootstrap && typeof window.bootstrap.Modal === 'function') {
-      newModal = new window.bootstrap.Modal(el.newModalEl);
-    } else if (typeof bootstrap !== 'undefined' && bootstrap?.Modal) {
-      newModal = new bootstrap.Modal(el.newModalEl);
+      return window.bootstrap.Modal;
     }
+    if (typeof bootstrap !== 'undefined' && bootstrap?.Modal) {
+      return bootstrap.Modal;
+    }
+    return null;
+  };
+
+  let newModal = null;
+  const getNewModalInstance = () => {
+    if (!el.newModalEl) return null;
+    const ModalCtor = resolveModalCtor();
+    if (!ModalCtor) return null;
+    if (typeof ModalCtor.getOrCreateInstance === 'function') {
+      newModal = ModalCtor.getOrCreateInstance(el.newModalEl);
+      return newModal;
+    }
+    if (!newModal) {
+      newModal = new ModalCtor(el.newModalEl);
+    }
+    return newModal;
+  };
+  if (el.newModalEl) {
     el.newModalEl.addEventListener('shown.bs.modal', () => {
       if (el.newCisloVp) {
         el.newCisloVp.focus();
@@ -614,12 +642,20 @@
   }
 
   let detailModal = null;
-  if (el.modalEl) {
-    if (window.bootstrap && typeof window.bootstrap.Modal === 'function') {
-      detailModal = new window.bootstrap.Modal(el.modalEl);
-    } else if (typeof bootstrap !== 'undefined' && bootstrap?.Modal) {
-      detailModal = new bootstrap.Modal(el.modalEl);
+  const getDetailModalInstance = () => {
+    if (!el.modalEl) return null;
+    const ModalCtor = resolveModalCtor();
+    if (!ModalCtor) return null;
+    if (typeof ModalCtor.getOrCreateInstance === 'function') {
+      detailModal = ModalCtor.getOrCreateInstance(el.modalEl);
+      return detailModal;
     }
+    if (!detailModal) {
+      detailModal = new ModalCtor(el.modalEl);
+    }
+    return detailModal;
+  };
+  if (el.modalEl) {
     el.modalEl.addEventListener('hidden.bs.modal', () => {
       state.lastDetailId = null;
     });
@@ -702,7 +738,12 @@
       setMeta('Načítám detail…');
       const data = await apiFetch(`${detailEndpoint}?id=${encodeURIComponent(id)}`);
       fillDetail(data);
-      if (detailModal) detailModal.show();
+      const modalInstance = getDetailModalInstance();
+      if (modalInstance) {
+        modalInstance.show();
+      } else if (el.modalEl) {
+        el.modalEl.classList.add('show');
+      }
     } catch (e) {
       console.error(e);
       setMeta(e?.message || 'Chyba při načtení detailu');
@@ -736,7 +777,12 @@
       state.offset = 0;
       syncInputsFromState();
       load(true);
-      if (detailModal) detailModal.hide();
+      const modalInstance = getDetailModalInstance();
+      if (modalInstance) {
+        modalInstance.hide();
+      } else if (el.modalEl) {
+        el.modalEl.classList.remove('show');
+      }
     });
   }
 
@@ -765,7 +811,6 @@
     }
     const firstTime = !el.pane.classList.contains('loaded');
     if (firstTime) {
-      el.pane.classList.add('loaded');
       syncInputsFromState();
       load(true);
       return;
@@ -793,8 +838,25 @@
       ensureTabLoaded(Boolean(ev.detail.refresh));
     }, 0);
   });
+  document.addEventListener('auth:ready', (ev) => {
+    if (!el.pane) return;
+    if (ev?.detail && ev.detail.authenticated === false) return;
+    if (!el.pane.classList.contains('loaded') || (el.tabBtn && el.tabBtn.classList.contains('active'))) {
+      ensureTabLoaded(true);
+    }
+  });
   // Aktivní záložka: spustíme až po AUTH signálu, aby byl k dispozici token
-  const ready = () => { if (el.tabBtn && el.tabBtn.classList.contains('active')) onShown({ target: el.tabBtn }); };
-  if (getToken && getToken()) ready();
-  document.addEventListener('auth:ready', ready, { once: true });
+  const ready = () => {
+    if (el.tabBtn && el.tabBtn.classList.contains('active')) onShown({ target: el.tabBtn });
+  };
+  if (getToken && getToken()) {
+    ready();
+  } else {
+    const waitForAuth = (ev) => {
+      if (ev?.detail && ev.detail.authenticated === false) return;
+      ready();
+      document.removeEventListener('auth:ready', waitForAuth);
+    };
+    document.addEventListener('auth:ready', waitForAuth);
+  }
 })();

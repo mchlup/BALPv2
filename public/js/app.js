@@ -379,6 +379,9 @@
         const modal = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
         modal?.hide();
         showAlert('Přihlášení proběhlo úspěšně.', 'success');
+        try {
+          document.dispatchEvent(new CustomEvent('auth:ready', { detail: { authenticated: true } }));
+        } catch {}
         refreshActiveTab();
       } catch (err) {
         showAlert('Přihlášení selhalo: ' + err.message, 'danger');
@@ -400,7 +403,13 @@
     hideAlert();
     initAuthUi();
     await loadModules();
-    await tryAutoLogin();
+    const autoLogged = await tryAutoLogin();
+    try {
+      document.dispatchEvent(new CustomEvent('auth:ready', { detail: { authenticated: autoLogged } }));
+    } catch {}
+    if (autoLogged) {
+      refreshActiveTab();
+    }
   });
 
   window.BALP = Object.assign(window.BALP || {}, {
