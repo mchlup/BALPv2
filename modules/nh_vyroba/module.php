@@ -3,6 +3,7 @@ return [
     'slug' => 'nh_vyroba',
     'name' => 'Výrobní příkaz – NH',
     'description' => 'Evidence výrobních příkazů pro nátěrové hmoty.',
+    'order' => 60,
     'api' => [
         'list' => __DIR__ . '/api/list.php',
         'get' => __DIR__ . '/api/get.php',
@@ -19,6 +20,7 @@ return [
         'helpers' => __DIR__ . '/includes/helpers.php',
     ],
     'ui' => [
+        'icon' => 'icons/clipboard.svg',
         'tabs' => [
             [
                 'slug' => 'nh-vyroba',

@@ -1,6 +1,10 @@
 (() => {
   const storageKey = 'balp_token';
+  const sidebarStorageKey = 'balp_sidebar_collapsed';
   const tabsState = new Map();
+  const moduleButtons = new Map();
+  let modulesState = [];
+  let activeModuleSlug = null;
   let activeTabKey = null;
 
   const $ = (sel, ctx = document) => ctx.querySelector(sel);
@@ -140,6 +144,44 @@
     return './' + path.replace(/^\.\//, '');
   };
 
+  const resolveModuleIcon = (module) => {
+    const icon = module?.ui?.icon;
+    if (!icon) return '';
+    if (/^https?:\/\//i.test(icon) || icon.startsWith('/')) return icon;
+    const normalized = icon.replace(/^\.\//, '').replace(/^\//, '');
+    return resolveAssetPath(`modules/${module.slug}/${normalized}`);
+  };
+
+  const updateSidebarToggleIcon = (collapsed) => {
+    const icon = $('#sidebarToggle .bi');
+    if (icon) {
+      icon.className = collapsed ? 'bi bi-chevron-double-right' : 'bi bi-chevron-double-left';
+    }
+    const toggle = $('#sidebarToggle');
+    if (toggle) {
+      toggle.setAttribute('aria-label', collapsed ? 'Rozbalit menu' : 'Sbalit menu');
+    }
+  };
+
+  const setSidebarCollapsed = (collapsed) => {
+    document.body.classList.toggle('sidebar-collapsed', collapsed);
+    updateSidebarToggleIcon(collapsed);
+    try {
+      localStorage.setItem(sidebarStorageKey, collapsed ? '1' : '0');
+    } catch {}
+  };
+
+  const initSidebar = () => {
+    const toggle = $('#sidebarToggle');
+    toggle?.addEventListener('click', () => {
+      const collapsed = !document.body.classList.contains('sidebar-collapsed');
+      setSidebarCollapsed(collapsed);
+    });
+    let stored = null;
+    try { stored = localStorage.getItem(sidebarStorageKey); } catch {}
+    setSidebarCollapsed(stored === '1');
+  };
+
   const ensureTabContent = (tabKey) => {
     const entry = tabsState.get(tabKey);
     if (!entry) return Promise.resolve();
@@ -148,7 +190,7 @@
 
     entry.loadingPromise = (async () => {
       const { module, tab, pane } = entry;
-      pane.innerHTML = '<div class="p-3 text-muted">Načítám modul…</div>';
+      pane.innerHTML = '<div class="module-pane-loading">Načítám modul…</div>';
 
       try {
         const cssAssets = [];
@@ -196,129 +238,258 @@
     document.dispatchEvent(new CustomEvent('balp:tab-shown', { detail }));
   };
 
-  const renderModuleTabs = (modules) => {
-    const nav = $('#moduleTabs');
-    const content = $('#moduleTabsContent');
-    if (!nav || !content) return;
-    nav.innerHTML = '';
-    content.innerHTML = '';
-    tabsState.clear();
-
-    const tabs = [];
-    modules.forEach((module) => {
-      const moduleTabs = module.ui?.tabs || [];
-      moduleTabs.forEach((tab) => {
-        tabs.push({ module, tab });
-      });
+  const sortModules = (modules) => {
+    return modules.slice().sort((a, b) => {
+      const orderDiff = (a.order ?? 100) - (b.order ?? 100);
+      if (orderDiff !== 0) return orderDiff;
+      const nameA = (a.name || a.slug || '').toLocaleLowerCase('cs');
+      const nameB = (b.name || b.slug || '').toLocaleLowerCase('cs');
+      return nameA.localeCompare(nameB, 'cs');
     });
+  };
 
-    tabs.sort((a, b) => (a.tab.order ?? 100) - (b.tab.order ?? 100));
-
-    let firstKey = null;
-
-    tabs.forEach(({ module, tab }) => {
-      const tabId = tab.tab_id || `tab-${module.slug}-${tab.slug}`;
-      const paneId = tab.pane_id || `pane-${module.slug}-${tab.slug}`;
-      const key = `${module.slug}:${tab.slug}`;
-
-      const li = document.createElement('li');
-      li.className = 'nav-item';
-      li.setAttribute('role', 'presentation');
-
-      const button = document.createElement('button');
-      button.className = 'nav-link';
-      button.id = tabId;
-      button.type = 'button';
-      button.setAttribute('role', 'tab');
-      button.setAttribute('data-bs-toggle', 'tab');
-      button.setAttribute('data-bs-target', `#${paneId}`);
-      button.textContent = tab.label || module.name || module.slug;
-
-      li.appendChild(button);
-      nav.appendChild(li);
-
-      const pane = document.createElement('div');
-      pane.className = 'tab-pane fade';
-      pane.id = paneId;
-      pane.setAttribute('role', 'tabpanel');
-      pane.setAttribute('aria-labelledby', tabId);
-      pane.innerHTML = '<div class="p-3 text-muted">Načítám…</div>';
-      content.appendChild(pane);
-
-      tabsState.set(key, {
-        module,
-        tab,
-        pane,
-        button,
-        tabId,
-        paneId,
-        loaded: false,
-        loadingPromise: null,
-      });
-
-      button.addEventListener('show.bs.tab', () => {
-        ensureTabContent(key).catch(() => {});
-      });
-
-      button.addEventListener('shown.bs.tab', () => {
-        activeTabKey = key;
-        const entry = tabsState.get(key);
-        ensureTabContent(key)
-          .finally(() => emitTabReady(entry));
-      });
-
-      if (!firstKey) firstKey = key;
+  const sortTabs = (tabs) => {
+    return tabs.slice().sort((a, b) => {
+      const orderDiff = (a.order ?? 100) - (b.order ?? 100);
+      if (orderDiff !== 0) return orderDiff;
+      const labelA = (a.label || a.slug || '').toLocaleLowerCase('cs');
+      const labelB = (b.label || b.slug || '').toLocaleLowerCase('cs');
+      return labelA.localeCompare(labelB, 'cs');
     });
+  };
 
-    appendUsersTab(nav, content);
-
-    if (firstKey) {
-      const entry = tabsState.get(firstKey);
-      if (entry) {
-        entry.button.classList.add('active');
-        entry.pane.classList.add('show', 'active');
-        activeTabKey = firstKey;
-        ensureTabContent(firstKey)
-          .finally(() => emitTabReady(entry));
-      }
+  const showEmptyState = (message) => {
+    const empty = $('#moduleEmptyState');
+    if (empty) {
+      if (message) empty.textContent = message;
+      empty.classList.remove('d-none');
     }
   };
 
-  const appendUsersTab = (nav, content) => {
-    const tabId = 'users-tab';
-    const paneId = 'tab-users';
-    const li = document.createElement('li');
-    li.className = 'nav-item';
-    li.setAttribute('role', 'presentation');
+  const hideEmptyState = () => {
+    $('#moduleEmptyState')?.classList.add('d-none');
+  };
 
-    const button = document.createElement('button');
-    button.className = 'nav-link';
-    button.id = tabId;
-    button.type = 'button';
-    button.setAttribute('role', 'tab');
-    button.setAttribute('data-bs-toggle', 'tab');
-    button.setAttribute('data-bs-target', `#${paneId}`);
-    button.textContent = 'Uživatelé';
-    li.appendChild(button);
-    nav.appendChild(li);
+  const renderModules = (modules) => {
+    modulesState = sortModules(modules);
+    moduleButtons.clear();
+    tabsState.clear();
 
-    const pane = document.createElement('div');
-    pane.className = 'tab-pane fade';
-    pane.id = paneId;
-    pane.setAttribute('role', 'tabpanel');
-    pane.setAttribute('aria-labelledby', tabId);
-    pane.innerHTML = '<div class="p-3 text-muted">Načítám…</div>';
-    content.appendChild(pane);
+    const menu = $('#moduleMenu');
+    const content = $('#moduleTabsContent');
+    const nav = $('#moduleTabNav');
+    const moduleTitle = $('#moduleTitle');
+    const moduleDescription = $('#moduleDescription');
 
-    button.addEventListener('shown.bs.tab', () => loadUsersTab(false));
+    if (menu) menu.innerHTML = '';
+    if (nav) nav.innerHTML = '';
+    if (content) content.innerHTML = '';
+
+    if (moduleTitle) moduleTitle.textContent = 'Vyberte modul';
+    if (moduleDescription) {
+      moduleDescription.textContent = 'Zvolte modul z nabídky vlevo.';
+      moduleDescription.classList.remove('d-none');
+    }
+    showEmptyState('Vyberte modul z nabídky vlevo.');
+
+    modulesState.forEach((module) => {
+      const moduleTabs = sortTabs(module.ui?.tabs || []);
+      moduleTabs.forEach((tab) => {
+        const tabId = tab.tab_id || `tab-${module.slug}-${tab.slug}`;
+        const paneId = tab.pane_id || `pane-${module.slug}-${tab.slug}`;
+        const key = `${module.slug}:${tab.slug}`;
+
+        const pane = document.createElement('div');
+        pane.className = 'module-pane';
+        pane.id = paneId;
+        pane.dataset.module = module.slug;
+        pane.setAttribute('role', 'tabpanel');
+        pane.setAttribute('aria-labelledby', tabId);
+        pane.setAttribute('tabindex', '0');
+        content?.appendChild(pane);
+
+        tabsState.set(key, {
+          module,
+          tab,
+          pane,
+          tabId,
+          paneId,
+          navButton: null,
+          loaded: false,
+          loadingPromise: null,
+        });
+      });
+
+      if (!menu) return;
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'sidebar-link';
+      button.dataset.module = module.slug;
+      button.title = module.name || module.slug;
+
+      const iconWrap = document.createElement('span');
+      iconWrap.className = 'sidebar-icon';
+      const iconUrl = resolveModuleIcon(module);
+      if (iconUrl) {
+        const img = document.createElement('img');
+        img.src = iconUrl;
+        img.alt = '';
+        iconWrap.appendChild(img);
+      } else {
+        const fallback = document.createElement('span');
+        fallback.textContent = (module.name || module.slug || '?').slice(0, 1).toUpperCase();
+        fallback.style.fontWeight = '700';
+        fallback.style.color = '#fff';
+        iconWrap.appendChild(fallback);
+      }
+
+      const label = document.createElement('span');
+      label.className = 'sidebar-label';
+      label.textContent = module.name || module.slug;
+
+      button.appendChild(iconWrap);
+      button.appendChild(label);
+
+      button.addEventListener('click', () => activateModule(module.slug));
+
+      menu.appendChild(button);
+      moduleButtons.set(module.slug, button);
+    });
+
+    if (!modulesState.length) {
+      showEmptyState('Nebyl nalezen žádný modul.');
+      activeModuleSlug = null;
+      activeTabKey = null;
+      return;
+    }
+
+    const initialModule = modulesState[0];
+    if (initialModule) {
+      activateModule(initialModule.slug);
+    }
+  };
+
+  const activateModule = (slug) => {
+    const module = modulesState.find((m) => m.slug === slug);
+    if (!module) return;
+
+    moduleButtons.forEach((btn, moduleSlug) => {
+      if (!btn) return;
+      if (moduleSlug === slug) btn.classList.add('active');
+      else btn.classList.remove('active');
+    });
+
+    activeModuleSlug = slug;
+
+    const moduleTitle = $('#moduleTitle');
+    if (moduleTitle) moduleTitle.textContent = module.name || module.slug;
+
+    const moduleDescription = $('#moduleDescription');
+    if (moduleDescription) {
+      if (module.description) {
+        moduleDescription.textContent = module.description;
+        moduleDescription.classList.remove('d-none');
+      } else {
+        moduleDescription.textContent = '';
+        moduleDescription.classList.add('d-none');
+      }
+    }
+
+    const moduleTabNav = $('#moduleTabNav');
+    if (!moduleTabNav) return;
+    moduleTabNav.innerHTML = '';
+
+    const moduleTabs = sortTabs(module.ui?.tabs || []);
+    moduleTabs.forEach((tab) => {
+      const key = `${module.slug}:${tab.slug}`;
+      const entry = tabsState.get(key);
+      if (!entry) return;
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'module-tab-button';
+      button.id = entry.tabId;
+      button.setAttribute('role', 'tab');
+      button.setAttribute('aria-controls', entry.paneId);
+      button.setAttribute('aria-selected', 'false');
+      button.textContent = tab.label || module.name || module.slug;
+      button.addEventListener('click', () => activateTab(key));
+
+      moduleTabNav.appendChild(button);
+      entry.navButton = button;
+    });
+
+    moduleTabNav.classList.toggle('d-none', moduleTabs.length <= 1);
+
+    if (!moduleTabs.length) {
+      showEmptyState('Tento modul nemá žádné dostupné zobrazení.');
+      if (activeTabKey) {
+        const prevEntry = tabsState.get(activeTabKey);
+        prevEntry?.pane?.classList?.remove('active');
+        if (prevEntry?.navButton) {
+          prevEntry.navButton.classList.remove('active');
+          prevEntry.navButton.setAttribute('aria-selected', 'false');
+        }
+      }
+      activeTabKey = null;
+      return;
+    }
+
+    hideEmptyState();
+
+    let targetKey = `${module.slug}:${moduleTabs[0].slug}`;
+    if (activeTabKey && activeTabKey.startsWith(`${module.slug}:`)) {
+      targetKey = activeTabKey;
+    }
+    activateTab(targetKey);
+  };
+
+  const activateTab = (tabKey) => {
+    const entry = tabsState.get(tabKey);
+    if (!entry) return;
+
+    if (activeTabKey === tabKey && entry.pane.classList.contains('active')) {
+      ensureTabContent(tabKey).catch(() => {});
+      return;
+    }
+
+    if (activeTabKey) {
+      const prevEntry = tabsState.get(activeTabKey);
+      if (prevEntry) {
+        prevEntry.pane.classList.remove('active');
+        if (prevEntry.navButton) {
+          prevEntry.navButton.classList.remove('active');
+          prevEntry.navButton.setAttribute('aria-selected', 'false');
+        }
+      }
+    }
+
+    activeTabKey = tabKey;
+    entry.pane.classList.add('active');
+    if (entry.navButton) {
+      entry.navButton.classList.add('active');
+      entry.navButton.setAttribute('aria-selected', 'true');
+    }
+
+    ensureTabContent(tabKey)
+      .finally(() => emitTabReady(entry));
   };
 
   const loadUsersTab = (force) => {
-    const pane = document.getElementById('tab-users');
+    const entry = tabsState.get('nastaveni:uzivatele');
+    const pane = entry?.pane;
     if (!pane) return;
-    if (pane.dataset.loaded && !force) return;
+    if (!force && pane.dataset.loaded === '1') return;
 
-    pane.innerHTML = '<div class="p-3 text-muted">Načítám…</div>';
+    delete pane.dataset.loaded;
+    const placeholder = pane.querySelector('[data-users-placeholder]');
+    if (placeholder) {
+      placeholder.innerHTML = '<div class="text-muted">Načítám seznam uživatelů…</div>';
+    } else {
+      pane.innerHTML = '<div class="p-3 text-muted">Načítám…</div>';
+    }
+
     fetch('../admin_users.php', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
       .then((r) => {
         if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -393,14 +564,22 @@
     try {
       const data = await apiFetch(`${API_URL}?action=_modules`);
       const modules = data.modules || [];
-      renderModuleTabs(modules);
+      renderModules(modules);
     } catch (err) {
       showAlert('Načtení seznamu modulů selhalo: ' + err.message, 'danger');
     }
   };
 
+  document.addEventListener('balp:tab-shown', (event) => {
+    const detail = event.detail || {};
+    if (detail.module === 'nastaveni' && detail.tab === 'uzivatele') {
+      loadUsersTab(detail.refresh === true);
+    }
+  });
+
   document.addEventListener('DOMContentLoaded', async () => {
     hideAlert();
+    initSidebar();
     initAuthUi();
     await loadModules();
     const autoLogged = await tryAutoLogin();

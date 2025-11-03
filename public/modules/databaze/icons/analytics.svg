@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect x="6" y="12" width="52" height="36" rx="8" fill="#0c7dbb"/>
+  <rect x="12" y="18" width="40" height="24" rx="5" fill="#f6f8fb"/>
+  <path d="M18 40 L18 30 L24 30 L24 40 Z" fill="#0c7dbb" opacity="0.8"/>
+  <path d="M26 40 L26 26 L32 26 L32 40 Z" fill="#0c7dbb" opacity="0.65"/>
+  <path d="M34 40 L34 22 L40 22 L40 40 Z" fill="#0c7dbb" opacity="0.5"/>
+  <polyline points="18,36 24,32 32,28 40,24 46,30" fill="none" stroke="#f15b2a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="24" y="48" width="16" height="4" rx="2" fill="#0c7dbb"/>
+  <rect x="20" y="52" width="24" height="4" rx="2" fill="#0c7dbb" opacity="0.85"/>
+</svg>

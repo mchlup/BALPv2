@@ -29,14 +29,17 @@ if ($action==='_modules'){
         'css' => array_values($module['ui']['assets']['css'] ?? []),
         'js' => array_values($module['ui']['assets']['js'] ?? []),
     ];
+    $order = $module['order'] ?? $module['ui']['order'] ?? 100;
     return [
       'slug' => $module['slug'],
       'name' => $module['name'] ?? $module['slug'],
       'description' => $module['description'] ?? '',
+      'order' => $order,
       'assets' => $module['assets'] ?? [],
       'ui' => [
         'tabs' => $uiTabs,
         'assets' => $uiAssets,
+        'icon' => $module['ui']['icon'] ?? null,
       ],
     ];
   }, balp_modules_registry()));

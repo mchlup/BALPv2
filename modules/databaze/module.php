@@ -3,12 +3,14 @@ return [
     'slug' => 'databaze',
     'name' => 'Databáze',
     'description' => 'Výchozí modul pro správu připojení a údržbu databáze.',
+    'order' => 20,
     'assets' => [
         'js' => [
             'js/databaze.controller.js',
         ],
     ],
     'ui' => [
+        'icon' => 'icons/analytics.svg',
         'tabs' => [
             [
                 'slug' => 'databaze',

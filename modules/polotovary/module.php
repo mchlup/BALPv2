@@ -3,6 +3,7 @@ return [
     'slug' => 'polotovary',
     'name' => 'Polotovary',
     'description' => 'Správa polotovarů a výrobních příkazů.',
+    'order' => 40,
     'api' => [
         'list' => __DIR__ . '/api/list.php',
         'get' => __DIR__ . '/api/get.php',
@@ -17,6 +18,7 @@ return [
         'search' => __DIR__ . '/api/search.php',
     ],
     'ui' => [
+        'icon' => 'icons/factory.svg',
         'tabs' => [
             [
                 'slug' => 'polotovary',
