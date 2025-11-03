@@ -15,16 +15,14 @@
     return h;
   };
 
-  const withTokenUrl = (url) => {
+  const withCacheBuster = (url) => {
     const u = new URL(url, window.location.origin);
-    const t = getToken();
-    if (t) u.searchParams.set('token', t);
     u.searchParams.set('_ts', Date.now());
     return u.toString();
   };
 
   async function apiFetch(url, opts = {}) {
-    const target = withTokenUrl(url);
+    const target = withCacheBuster(url);
     const resp = await fetch(target, {
       method: opts.method || 'GET',
       headers: { ...apiHeaders(), ...(opts.headers || {}) },

@@ -1,7 +1,7 @@
 <?php
 // /balp2/api/pol_list.php (fixed, robust, UTF‑8 safe)
 // Seznam polotovarů z tabulky balp_pol (vyhledávání, řazení, stránkování).
-// Auth: JWT (Authorization/cookie/?token=)
+// Auth: JWT (Authorization hlavička nebo cookie `balp_token`)
 
 declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');

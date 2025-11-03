@@ -50,11 +50,11 @@
     return headers;
   };
 
+  const cacheBustedUrl = (url) => (url.includes('?') ? `${url}&_ts=${Date.now()}` : `${url}?_ts=${Date.now()}`);
+
   const apiFetch = async (url, opts = {}) => {
-    const fullUrl = url.includes('?') ? `${url}&_ts=${Date.now()}` : `${url}?_ts=${Date.now()}`;
-    const token = getToken();
-    const withToken = token ? `${fullUrl}&token=${encodeURIComponent(token)}` : fullUrl;
-    const resp = await fetch(withToken, {
+    const targetUrl = cacheBustedUrl(url);
+    const resp = await fetch(targetUrl, {
       method: opts.method || 'GET',
       headers: { ...apiHeaders(), ...(opts.headers || {}) },
       body: opts.body,
@@ -75,7 +75,12 @@
     const data = await apiFetch(`${API_URL}?action=auth_login`, { method: 'POST', body: payload });
     if (!data?.token) throw new Error('Server nevrátil token.');
     setToken(data.token);
-    try { await apiFetch('/balp2/api/token_set_cookie.php?token=' + encodeURIComponent(data.token)); } catch {}
+    try {
+      await apiFetch('/balp2/api/token_set_cookie.php', {
+        method: 'POST',
+        body: JSON.stringify({ token: data.token }),
+      });
+    } catch {}
     return data;
   };
 

@@ -4,7 +4,7 @@
 //  - suroviny (balp_sur) + jejich SH/sušiny + platnost (dtod/dtdo)
 //  - polotovary (balp_pol) + SH + platnost
 // Vstup: GET id (id polotovaru), mnozstvi_kg (float, default 1.0)
-// Auth: JWT (Authorization: Bearer <token>) nebo cookie `balp_token` nebo ?token=
+// Auth: JWT (Authorization: Bearer <token>) nebo cookie `balp_token`
 
 declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');

@@ -55,11 +55,11 @@
     return String(value);
   };
 
+  const withCacheBuster = (url) => url + (url.includes('?') ? '&' : '?') + '_ts=' + Date.now();
+
   async function apiFetch(url, opts = {}) {
-    const full = url + (url.includes('?') ? '&' : '?') + '_ts=' + Date.now();
-    const token = getToken();
-    const withToken = token ? full + '&token=' + encodeURIComponent(token) : full;
-    const resp = await fetch(withToken, {
+    const target = withCacheBuster(url);
+    const resp = await fetch(target, {
       method: opts.method || 'GET',
       headers: { ...apiHeaders(), ...(opts.headers || {}) },
       body: opts.body,

@@ -30,11 +30,11 @@
     if (t) h['Authorization'] = 'Bearer ' + t;
     return h;
   };
+  const withCacheBuster = (url) => url + (url.includes('?') ? '&' : '?') + '_ts=' + Date.now();
+
   async function apiFetch(url, opts={}) {
-    const full = url + (url.includes('?') ? '&' : '?') + '_ts=' + Date.now();
-    const t = getToken();
-    const withToken = t ? full + '&token=' + encodeURIComponent(t) : full;
-    const resp = await fetch(withToken, {
+    const target = withCacheBuster(url);
+    const resp = await fetch(target, {
       method: opts.method || 'GET',
       headers: {...apiHeaders(), ...(opts.headers || {})},
       body: opts.body,

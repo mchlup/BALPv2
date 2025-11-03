@@ -25,10 +25,11 @@
   const storageKey='balp_token';
   const getToken = ()=>{ try{return localStorage.getItem(storageKey)||'';}catch(e){return '';} };
   const apiHeaders = ()=>{ const h={'Content-Type':'application/json'}; const t=getToken(); if(t) h['Authorization']='Bearer '+t; return h; };
+  const withCacheBuster = (url) => url + (url.includes('?')?'&':'?') + '_ts=' + Date.now();
+
   async function apiFetch(url, opts={}){
-    const full = url+(url.includes('?')?'&':'?')+'_ts='+Date.now();
-    const t=getToken(); const withToken = t ? full + '&token='+encodeURIComponent(t) : full;
-    const resp = await fetch(withToken, {method:(opts.method||'GET'), headers:{...apiHeaders(),...(opts.headers||{})}, body:opts.body, credentials:'include'});
+    const target = withCacheBuster(url);
+    const resp = await fetch(target, {method:(opts.method||'GET'), headers:{...apiHeaders(),...(opts.headers||{})}, body:opts.body, credentials:'include'});
     const text = await resp.text(); let data=null; try{data=JSON.parse(text);}catch{}
     if(!resp.ok){ throw new Error(data?.error||data?.message||text||('HTTP '+resp.status)); }
     return data ?? text;

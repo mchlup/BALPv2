@@ -146,9 +146,7 @@ function get_bearer_token() {
     if (!empty($_SERVER['HTTP_AUTHORIZATION']) && stripos($_SERVER['HTTP_AUTHORIZATION'], 'Bearer ') === 0) {
         return trim(substr($_SERVER['HTTP_AUTHORIZATION'], 7));
     }
-    if (!empty($_COOKIE['balp_token'])) return $_COOKIE['balp_token'];
-    if (!empty($_GET['token'])) return $_GET['token'];
-    if (!empty($_POST['token'])) return $_POST['token'];
+    if (!empty($_COOKIE['balp_token'])) return (string)$_COOKIE['balp_token'];
     return '';
 }
 
