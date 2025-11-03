@@ -12,30 +12,54 @@
     #vpModal .modal-header #vp-actions{display:none !important;}
   </style>
 </head>
-<body class="bg-light">
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-  <div class="container-fluid">
-    <a class="navbar-brand" href="#">BALP v2</a>
-    <div class="d-flex ms-auto align-items-center gap-2">
-      <span id="user-info" class="navbar-text text-white-50">Nepřihlášen</span>
-      <button id="btn-login" type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#loginModal">Přihlásit</button>
-      <button id="btn-logout" type="button" class="btn btn-outline-light btn-sm d-none">Odhlásit</button>
+<body class="app-body">
+<div class="app-shell">
+  <aside id="appSidebar" class="app-sidebar" aria-label="Hlavní navigace">
+    <div class="sidebar-top">
+      <div class="sidebar-brand" title="BALP v2">
+        <span class="sidebar-logo" aria-hidden="true">B</span>
+        <span class="sidebar-title">BALP v2</span>
+      </div>
+      <button id="sidebarToggle" type="button" class="btn btn-outline-light btn-sm sidebar-toggle" aria-label="Sbalit menu">
+        <i class="bi bi-chevron-double-left"></i>
+      </button>
     </div>
-  </div>
-</nav>
+    <nav id="moduleMenu" class="sidebar-menu" role="tree"></nav>
+  </aside>
 
-<div class="container py-3">
-  <div id="alert-box" class="alert d-none" role="alert"></div>
+  <div class="app-main">
+    <header class="app-header">
+      <div class="app-header-title">BALP v2</div>
+      <div class="app-header-actions">
+        <span id="user-info" class="app-user-info">Nepřihlášen</span>
+        <button id="btn-login" type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#loginModal">Přihlásit</button>
+        <button id="btn-logout" type="button" class="btn btn-outline-secondary btn-sm d-none">Odhlásit</button>
+      </div>
+    </header>
 
-  <div class="card shadow-sm">
-    <div class="card-body">
-      <ul class="nav nav-tabs" id="moduleTabs" role="tablist"></ul>
-      <div class="tab-content" id="moduleTabsContent"></div>
-    </div>
-  </div>
+    <main class="app-content">
+      <div class="app-content-inner container-fluid py-4">
+        <div id="alert-box" class="alert d-none" role="alert"></div>
 
-  <div class="text-end mt-3">
-    <a href="./diag.html" class="link-secondary small">Diagnostika přihlášení</a>
+        <div class="card shadow-sm module-card">
+          <div class="card-body">
+            <div class="module-header">
+              <div>
+                <h2 id="moduleTitle" class="module-title h4 mb-1">Vyberte modul</h2>
+                <p id="moduleDescription" class="module-description text-muted mb-0">Zvolte modul z nabídky vlevo.</p>
+              </div>
+            </div>
+            <div id="moduleTabNav" class="module-tab-nav" role="tablist" aria-label="Záložky modulu"></div>
+            <div id="moduleEmptyState" class="module-empty-state text-muted">Vyberte modul z nabídky vlevo.</div>
+            <div id="moduleTabsContent" class="module-tab-content" role="presentation"></div>
+          </div>
+        </div>
+
+        <div class="text-end mt-3">
+          <a href="./diag.html" class="link-secondary small">Diagnostika přihlášení</a>
+        </div>
+      </div>
+    </main>
   </div>
 </div>
 

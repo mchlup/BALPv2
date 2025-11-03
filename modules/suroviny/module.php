@@ -3,6 +3,7 @@ return [
     'slug' => 'suroviny',
     'name' => 'Suroviny',
     'description' => 'Správa seznamu surovin a jejich parametrů.',
+    'order' => 30,
     'api' => [
         'list' => __DIR__ . '/api/list.php',
         'get' => __DIR__ . '/api/get.php',
@@ -14,6 +15,7 @@ return [
         'search' => __DIR__ . '/api/search.php',
     ],
     'ui' => [
+        'icon' => 'icons/flask.svg',
         'tabs' => [
             [
                 'slug' => 'suroviny',

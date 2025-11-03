@@ -3,6 +3,7 @@ return [
     'slug' => 'naterove_hmoty',
     'name' => 'NH – Nátěrové hmoty',
     'description' => 'Evidence nátěrových hmot a jejich výrobních kroků.',
+    'order' => 50,
     'api' => [
         'list' => __DIR__ . '/api/list.php',
         'get' => __DIR__ . '/api/get.php',
@@ -13,6 +14,7 @@ return [
         'helpers' => __DIR__ . '/includes/helpers.php',
     ],
     'ui' => [
+        'icon' => 'icons/paint.svg',
         'tabs' => [
             [
                 'slug' => 'nh',
