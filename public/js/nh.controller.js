@@ -284,6 +284,13 @@
     if (ev.detail.tab !== 'nh') return;
     ensureTabLoaded(Boolean(ev.detail.refresh));
   });
+  document.addEventListener('auth:ready', (ev) => {
+    if (!el.pane) return;
+    if (ev?.detail && ev.detail.authenticated === false) return;
+    if (!el.pane.classList.contains('loaded') || (el.tabBtn && el.tabBtn.classList.contains('active'))) {
+      ensureTabLoaded(true);
+    }
+  });
   // Když už je NH aktivní hned po načtení
   if (el.tabBtn && el.tabBtn.classList.contains('active')) onShown({target: el.tabBtn});
 
@@ -297,18 +304,30 @@
     });
   }
   const modalEl = document.getElementById('nhModal');
-  let modal = null;
-  if (modalEl) {
-    let ModalCtor = null;
+  const resolveModalCtor = () => {
     if (window.bootstrap && typeof window.bootstrap.Modal === 'function') {
-      ModalCtor = window.bootstrap.Modal;
-    } else if (typeof bootstrap !== 'undefined' && bootstrap && typeof bootstrap.Modal === 'function') {
-      ModalCtor = bootstrap.Modal;
+      return window.bootstrap.Modal;
     }
-    if (ModalCtor) {
+    if (typeof bootstrap !== 'undefined' && bootstrap && typeof bootstrap.Modal === 'function') {
+      return bootstrap.Modal;
+    }
+    return null;
+  };
+
+  let modal = null;
+  const getModalInstance = () => {
+    if (!modalEl) return null;
+    const ModalCtor = resolveModalCtor();
+    if (!ModalCtor) return null;
+    if (typeof ModalCtor.getOrCreateInstance === 'function') {
+      modal = ModalCtor.getOrCreateInstance(modalEl);
+      return modal;
+    }
+    if (!modal) {
       modal = new ModalCtor(modalEl);
     }
-  }
+    return modal;
+  };
   const f = {
     id: document.getElementById('nh-id'),
     kod: document.getElementById('nh-kod'),
@@ -773,7 +792,11 @@
     return payload;
   }
   async function openDetail(id) {
-    if (!modal) return;
+    const modalInstance = getModalInstance();
+    if (!modalInstance) {
+      console.warn('NH detail modal nelze otevřít: komponenta Modal není dostupná.');
+      return;
+    }
     try {
       const data = await apiFetch(apiBase + '/api/nh_get.php?id=' + encodeURIComponent(id));
       const row = data.item ?? data;
@@ -785,14 +808,18 @@
       draftRecipe = [];
       renderDraftRecipe();
       updateRecipeEditorVisibility();
-      modal.show();
+      modalInstance.show();
     } catch (e) {
       console.error('Detail load failed:', e);
       if (el.meta) el.meta.textContent = e.message || 'Chyba při načítání detailu';
     }
   }
   function newItem() {
-    if (!modal) return;
+    const modalInstance = getModalInstance();
+    if (!modalInstance) {
+      console.warn('NH modal pro vytvoření nové položky není dostupný.');
+      return;
+    }
     const today = new Date();
     const formatDate = (d) => {
       if (!(d instanceof Date) || Number.isNaN(d.getTime())) return '';
@@ -819,13 +846,14 @@
       f.kod.focus();
       f.kod.select?.();
     }
-    modal.show();
+    modalInstance.show();
   }
   async function saveDetail() {
     try {
       const payload = formToPayload();
       await apiFetch(apiBase + '/api/nh_upsert.php', { method: 'POST', body: JSON.stringify(payload) });
-      if (modal) modal.hide();
+      const modalInstance = getModalInstance();
+      if (modalInstance) modalInstance.hide();
       state.offset = 0;
       isCreating = false;
       await load(true);
@@ -843,7 +871,8 @@
     if (!confirm('Opravdu smazat tuto položku NH?')) return;
     try {
       await apiFetch(apiBase + '/api/nh_delete.php?id=' + encodeURIComponent(id), { method: 'POST' });
-      if (modal) modal.hide();
+      const modalInstance = getModalInstance();
+      if (modalInstance) modalInstance.hide();
       state.offset = 0;
       await load(true);
       if (detailMeta) detailMeta.textContent = '';
