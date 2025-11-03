@@ -65,7 +65,12 @@
   const appendLog = (container, message, type = 'info') => {
     if (!container) return;
     const ts = new Date().toLocaleTimeString();
-    container.innerHTML = `<span class="text-${type === 'danger' ? 'danger' : type === 'success' ? 'success' : 'muted'}">[${ts}] ${message}</span>`;
+    const variant = type === 'danger' ? 'danger' : type === 'success' ? 'success' : 'muted';
+    const span = document.createElement('span');
+    span.className = `text-${variant}`;
+    span.textContent = `[${ts}] ${String(message ?? '')}`;
+    container.innerHTML = '';
+    container.appendChild(span);
   };
 
   const apiFetch = async (url, options = {}) => {
