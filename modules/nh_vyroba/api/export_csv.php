@@ -51,13 +51,16 @@ try {
 
     $where = [];
     $params = [];
+    $paramTypes = [];
     if ($vpFrom !== null) {
         $where[] = nh_vyr_digits_condition($pdo, $alias, 'vp_from', '>=');
-        $params[':vp_from'] = $vpFrom;
+        $params[':vp_from'] = (int)$vpFrom;
+        $paramTypes[':vp_from'] = PDO::PARAM_INT;
     }
     if ($vpTo !== null) {
         $where[] = nh_vyr_digits_condition($pdo, $alias, 'vp_to', '<=');
-        $params[':vp_to'] = $vpTo;
+        $params[':vp_to'] = (int)$vpTo;
+        $paramTypes[':vp_to'] = PDO::PARAM_INT;
     }
     $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 
@@ -80,7 +83,8 @@ try {
 
     $stmt = $pdo->prepare($sql);
     foreach ($params as $k => $v) {
-        $stmt->bindValue($k, $v);
+        $type = $paramTypes[$k] ?? (is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+        $stmt->bindValue($k, $v, $type);
     }
     if ($limit !== null) {
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);

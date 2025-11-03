@@ -91,13 +91,68 @@ if (!function_exists('nh_vyr_column_ref')) {
     }
 }
 
+if (!function_exists('nh_vyr_supports_regexp_replace')) {
+    function nh_vyr_supports_regexp_replace(PDO $pdo): bool
+    {
+        static $cache = [];
+        $key = spl_object_id($pdo);
+        if (array_key_exists($key, $cache)) {
+            return $cache[$key];
+        }
+
+        try {
+            $stmt = $pdo->query("SELECT REGEXP_REPLACE('A-12/34', '[^0-9]', '')");
+            if ($stmt !== false) {
+                $stmt->fetchColumn();
+                return $cache[$key] = true;
+            }
+        } catch (Throwable $ignored) {
+            // driver nepodporuje REGEXP_REPLACE
+        }
+
+        return $cache[$key] = false;
+    }
+}
+
+if (!function_exists('nh_vyr_digits_only_expr')) {
+    function nh_vyr_digits_only_expr(PDO $pdo, string $columnRef): string
+    {
+        $base = 'COALESCE(' . $columnRef . ", '')";
+
+        if (nh_vyr_supports_regexp_replace($pdo)) {
+            return "REGEXP_REPLACE($base, '[^0-9]', '')";
+        }
+
+        $expr = $base;
+        foreach (['-', '/', ' ', '.', ',', ';', ':', '_'] as $char) {
+            $expr = "REPLACE($expr, '" . str_replace("'", "''", $char) . "', '')";
+        }
+
+        foreach (range('A', 'Z') as $letter) {
+            $expr = "REPLACE($expr, '$letter', '')";
+        }
+        foreach (range('a', 'z') as $letter) {
+            $expr = "REPLACE($expr, '$letter', '')";
+        }
+
+        return $expr;
+    }
+}
+
+if (!function_exists('nh_vyr_digits_unsigned_expr')) {
+    function nh_vyr_digits_unsigned_expr(PDO $pdo, string $columnRef): string
+    {
+        return 'CAST(' . nh_vyr_digits_only_expr($pdo, $columnRef) . ' AS UNSIGNED)';
+    }
+}
+
 if (!function_exists('nh_vyr_digits_condition')) {
     function nh_vyr_digits_condition(PDO $pdo, string $alias, string $param, string $operator = '>='): string
     {
         $column = nh_vyr_vp_column($pdo);
         $columnRef = nh_vyr_column_ref($alias, $column);
         $op = in_array($operator, ['>=', '<=', '=', '>', '<'], true) ? $operator : '>=';
-        return "REPLACE($columnRef, '-', '') $op :$param";
+        return nh_vyr_digits_unsigned_expr($pdo, $columnRef) . " $op :$param";
     }
 }
 
@@ -106,7 +161,7 @@ if (!function_exists('nh_vyr_digits_expr')) {
     {
         $column = nh_vyr_vp_column($pdo);
         $columnRef = nh_vyr_column_ref($alias, $column);
-        return "CAST(REPLACE($columnRef, '-', '') AS UNSIGNED)";
+        return nh_vyr_digits_unsigned_expr($pdo, $columnRef);
     }
 }
 
