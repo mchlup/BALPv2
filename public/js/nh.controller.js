@@ -123,7 +123,7 @@
   }
 
   async function load(force=false) {
-    if (state.loading && !force) return;
+    if (state.loading && !force) return false;
     state.loading = true;
     setMeta('Načítám…');
     try {
@@ -145,9 +145,13 @@
       const to = hasItems ? Math.min(state.offset + state.limit, state.total) : 0;
       setMeta(hasItems ? `Zobrazeno ${from}–${to} z ${state.total}` : 'Žádné záznamy.');
       updatePager();
+      if (el.pane) el.pane.classList.add('loaded');
+      return true;
     } catch (e) {
       setMeta(e?.message || 'Chyba při načítání');
       console.error(e);
+      if (el.pane) el.pane.classList.remove('loaded');
+      return false;
     } finally {
       state.loading = false;
     }
@@ -258,7 +262,6 @@
     if (!el.pane) return;
     const firstTime = !el.pane.classList.contains('loaded');
     if (firstTime) {
-      el.pane.classList.add('loaded');
       load();
       return;
     }
