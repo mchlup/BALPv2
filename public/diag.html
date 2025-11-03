@@ -10,9 +10,50 @@
   <h1 class="h4 mb-3">Diagnostika přihlášení</h1>
   <p>Tyto odkazy pomůžou zjistit, kde se ztrácí token/hlavičky:</p>
   <ul>
-    <li><a href="/balp2/api/auth_probe.php" target="_blank">/balp2/api/auth_probe.php</a> (detekce tokenu v hlavičce, cookie, GET)</li>
-    <li><a href="/balp2/api/token_set_cookie.php?token=TEST" target="_blank">/balp2/api/token_set_cookie.php?token=TEST</a> (nastaví cookie <code>balp_token=TEST</code>)</li>
+    <li><a href="/balp2/api/auth_probe.php" target="_blank">/balp2/api/auth_probe.php</a> (detekce tokenu v hlavičce nebo cookie)</li>
+    <li>
+      <form id="set-cookie-form" class="d-flex flex-wrap gap-2 align-items-center" action="javascript:void 0;">
+        <label for="set-cookie-token" class="form-label mb-0">Token:</label>
+        <input type="text" class="form-control form-control-sm flex-grow-1" id="set-cookie-token" value="TEST" autocomplete="off">
+        <button type="submit" class="btn btn-sm btn-outline-primary">Nastavit cookie přes POST</button>
+      </form>
+      <small id="set-cookie-status" class="text-muted"></small>
+    </li>
   </ul>
-  <p>Pokud <code>auth_probe.php</code> nevidí záhlaví <code>Authorization</code>, je nutné ponechat fallback přes cookie/GET a/nebo upravit reverse proxy.</p>
+  <p>Pokud <code>auth_probe.php</code> nevidí záhlaví <code>Authorization</code>, zkontrolujte konfiguraci reverse proxy. Fallback přes cookie je stále podporován, ale token v URL je zakázán.</p>
+  <script>
+    (function(){
+      const form = document.getElementById('set-cookie-form');
+      if (!form) return;
+      const input = document.getElementById('set-cookie-token');
+      const statusEl = document.getElementById('set-cookie-status');
+      const setStatus = (msg, ok = true) => {
+        if (!statusEl) return;
+        statusEl.textContent = msg || '';
+        statusEl.classList.toggle('text-success', ok);
+        statusEl.classList.toggle('text-danger', !ok);
+      };
+      form.addEventListener('submit', async (evt) => {
+        evt.preventDefault();
+        const token = (input?.value || '').trim();
+        if (!token) { setStatus('Zadejte token.', false); return; }
+        setStatus('Odesílám…', true);
+        try {
+          const resp = await fetch('/balp2/api/token_set_cookie.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token })
+          });
+          if (!resp.ok) {
+            const text = await resp.text();
+            throw new Error(text || ('HTTP ' + resp.status));
+          }
+          setStatus('Cookie nastaveno. Obnovte stránku a zkontrolujte devtools.', true);
+        } catch (err) {
+          setStatus('Nastavení cookie selhalo: ' + (err?.message || err || 'neznámá chyba'), false);
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

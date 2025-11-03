@@ -1,5 +1,5 @@
 // public/js/pol.editor.js (patched 2025-09-03 c)
-// - POST nyní přidává ?token=... do URL (kromě Authorization: Bearer) kvůli staršímu backendu.
+// - Token se posílá pouze v Authorization hlavičce (žádný token v URL).
 // - Posílá `rows` i `lines`.
 // - Lepší chybová hláška.
 // - Odstíníme chybné Bootstrap "tab" odkazy s href != '#...' (např. '../admin_users.php').
@@ -17,21 +17,17 @@
   const getToken = ()=>{ try{return localStorage.getItem(storageKey)||'';}catch(e){return '';} };
   const apiHeaders = ()=>{ const h={'Content-Type':'application/json'}; const t=getToken(); if(t) h['Authorization']='Bearer '+t; return h; };
 
-  const withToken = (url)=>{
-    const t = getToken();
-    if (!t) return url;
-    return url + (url.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(t);
-  };
+  const withCacheBuster = (url)=> url + (url.includes('?')?'&':'?') + '_ts=' + Date.now();
 
   const apiGet = async (url)=>{
-    const r=await fetch(withToken(url),{headers:apiHeaders()});
+    const r=await fetch(withCacheBuster(url),{headers:apiHeaders()});
     const text = await r.text();
     if(!r.ok) throw new Error(text || (r.status+' '+r.statusText));
     try { return JSON.parse(text); } catch { return {ok:false, raw:text}; }
   };
 
   const apiPost = async (url, body)=>{
-    const r=await fetch(withToken(url),{method:'POST', headers:apiHeaders(), body:JSON.stringify(body)});
+    const r=await fetch(withCacheBuster(url),{method:'POST', headers:apiHeaders(), body:JSON.stringify(body)});
     const text = await r.text();
     if(!r.ok) throw new Error(text || (r.status+' '+r.statusText));
     try { return JSON.parse(text); } catch { return {ok:false, raw:text}; }

@@ -1,7 +1,6 @@
 <?php
 // api/auth_helpers.php
-// Robustly extract Bearer token from Authorization header, HTTP_AUTHORIZATION (FPM/nginx),
-// cookie 'balp_token', or GET param 'token'.
+// Robustně extrahuje Bearer token z Authorization hlavičky nebo cookie 'balp_token'.
 
 require_once __DIR__ . '/../helpers.php';
 
@@ -29,8 +28,7 @@ function balp_get_bearer_token() {
     $auth = $_SERVER['HTTP_AUTHORIZATION'];
     if (stripos($auth, 'Bearer ') === 0) return trim(substr($auth, 7));
   }
-  if (!empty($_COOKIE['balp_token'])) return $_COOKIE['balp_token'];
-  if (!empty($_GET['token'])) return $_GET['token'];
+  if (!empty($_COOKIE['balp_token'])) return (string)$_COOKIE['balp_token'];
   return '';
 }
 

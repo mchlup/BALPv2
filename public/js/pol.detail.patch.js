@@ -8,11 +8,11 @@
     const t = getToken(); if (t) h['Authorization'] = 'Bearer ' + t;
     return h;
   };
+  const withCacheBuster = (url) => (url.includes('?') ? `${url}&_ts=${Date.now()}` : `${url}?_ts=${Date.now()}`);
+
   async function apiFetch(url, opts={}) {
-    const full = url.includes('?') ? `${url}&_ts=${Date.now()}` : `${url}?_ts=${Date.now()}`;
-    const t = getToken();
-    const withTokenUrl = t ? `${full}&token=${encodeURIComponent(t)}` : full;
-    const resp = await fetch(withTokenUrl, {
+    const target = withCacheBuster(url);
+    const resp = await fetch(target, {
       method: (opts.method || 'GET'),
       headers: {...apiHeaders(), ...(opts.headers||{})},
       body: opts.body,
