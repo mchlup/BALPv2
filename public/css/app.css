@@ -37,10 +37,18 @@ body.app-body {
 .sidebar-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.5rem;
   padding: 0 0.5rem 0.75rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-bottom {
+  margin-top: auto;
+  padding: 0.75rem 0.5rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: center;
 }
 
 .sidebar-brand {
@@ -173,15 +181,28 @@ body.sidebar-collapsed .sidebar-brand {
 
 body.sidebar-collapsed .sidebar-toggle {
   border-color: transparent;
+  width: 3rem;
+  height: 3rem;
 }
 
 body.sidebar-collapsed .sidebar-menu {
-  padding-inline: 0;
+  padding-inline: 0.25rem;
 }
 
 body.sidebar-collapsed .sidebar-link {
   justify-content: center;
-  padding-inline: 0.5rem;
+  padding: 0.35rem 0.5rem;
+}
+
+body.sidebar-collapsed .sidebar-link .sidebar-icon {
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 3rem;
+  border-radius: 0.75rem;
+}
+
+body.sidebar-collapsed .sidebar-bottom {
+  padding: 0.75rem 0.25rem 0.25rem;
 }
 
 .app-main {

@@ -67,14 +67,17 @@ try {
 
     $where = [];
     $params = [];
+    $paramTypes = [];
 
     if ($vpFromDigits !== null) {
         $where[] = nh_vyr_digits_condition($pdo, $alias, 'vp_from', '>=');
-        $params[':vp_from'] = $vpFromDigits;
+        $params[':vp_from'] = (int)$vpFromDigits;
+        $paramTypes[':vp_from'] = PDO::PARAM_INT;
     }
     if ($vpToDigits !== null) {
         $where[] = nh_vyr_digits_condition($pdo, $alias, 'vp_to', '<=');
-        $params[':vp_to'] = $vpToDigits;
+        $params[':vp_to'] = (int)$vpToDigits;
+        $paramTypes[':vp_to'] = PDO::PARAM_INT;
     }
 
     $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
@@ -82,7 +85,8 @@ try {
     $countSql = "SELECT COUNT(*) FROM $table AS v $join $whereSql";
     $countStmt = $pdo->prepare($countSql);
     foreach ($params as $k => $v) {
-        $countStmt->bindValue($k, $v);
+        $type = $paramTypes[$k] ?? (is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+        $countStmt->bindValue($k, $v, $type);
     }
     $countStmt->execute();
     $total = (int)$countStmt->fetchColumn();
@@ -104,7 +108,8 @@ try {
 
     $stmt = $pdo->prepare($selectSql);
     foreach ($params as $k => $v) {
-        $stmt->bindValue($k, $v);
+        $type = $paramTypes[$k] ?? (is_int($v) ? PDO::PARAM_INT : PDO::PARAM_STR);
+        $stmt->bindValue($k, $v, $type);
     }
     $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
     $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
