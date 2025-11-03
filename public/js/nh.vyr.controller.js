@@ -342,7 +342,7 @@
   }
 
   async function load(force = false) {
-    if (state.loading && !force) return;
+    if (state.loading && !force) return false;
     state.loading = true;
     setMeta('Načítám…');
     try {
@@ -365,9 +365,13 @@
         setMeta('Žádné záznamy.');
       }
       updatePager();
+      if (el.pane) el.pane.classList.add('loaded');
+      return true;
     } catch (e) {
       console.error(e);
       setMeta(e?.message || 'Chyba při načítání');
+      if (el.pane) el.pane.classList.remove('loaded');
+      return false;
     } finally {
       state.loading = false;
     }
@@ -765,7 +769,6 @@
     }
     const firstTime = !el.pane.classList.contains('loaded');
     if (firstTime) {
-      el.pane.classList.add('loaded');
       syncInputsFromState();
       load(true);
       return;
