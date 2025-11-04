@@ -93,37 +93,61 @@
   };
 
   const sanitizeColor = (item) => {
-    const hex = typeof item?.hex === 'string' ? item.hex.trim() : '';
-    if (hex && /^#?[0-9a-fA-F]{3,8}$/.test(hex)) {
-      const normalized = hex.startsWith('#') ? hex : '#' + hex;
-      if (/^#[0-9a-fA-F]{6}$/.test(normalized)) {
-        return normalized.toUpperCase();
-      }
-      if (/^#[0-9a-fA-F]{3}$/.test(normalized)) {
-        return '#' + normalized[1] + normalized[1] + normalized[2] + normalized[2] + normalized[3] + normalized[3];
-      }
-    }
-    const rgbText = typeof item?.rgb === 'string' ? item.rgb.trim() : '';
-    if (rgbText) {
-      const matches = rgbText.match(/\d+/g);
-      if (matches && matches.length >= 3) {
-        const [r, g, b] = matches.slice(0, 3).map((part) => {
-          const value = Math.min(255, Math.max(0, parseInt(part, 10) || 0));
-          return value;
-        });
-        return `rgb(${r}, ${g}, ${b})`;
+  // 1) Preferuj už normalizovanou barvu z API (item.color)
+  const direct = typeof item?.color === 'string' ? item.color.trim() : '';
+  if (direct) {
+    // rgb(...) i HEX s/bez '#'
+    if (/^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/i.test(direct)) return direct;
+    if (/^#?[0-9a-fA-F]{3,8}$/.test(direct)) {
+      const norm = direct.startsWith('#') ? direct : '#' + direct;
+      if (/^#[0-9a-fA-F]{6}$/.test(norm)) return norm.toUpperCase();
+      if (/^#[0-9a-fA-F]{3}$/.test(norm)) {
+        return (
+          '#' +
+          norm[1] + norm[1] +
+          norm[2] + norm[2] +
+          norm[3] + norm[3]
+        ).toUpperCase();
       }
     }
-    const components = Array.isArray(item?.rgb_components) ? item.rgb_components : [];
-    if (components.length >= 3) {
-      const [r, g, b] = components.map((value) => {
-        const num = Math.min(255, Math.max(0, parseInt(value, 10) || 0));
-        return num;
+  }
+
+  // 2) Fallback: HEX v item.hex
+  const hex = typeof item?.hex === 'string' ? item.hex.trim() : '';
+  if (hex && /^#?[0-9a-fA-F]{3,8}$/.test(hex)) {
+    const normalized = hex.startsWith('#') ? hex : '#' + hex;
+    if (/^#[0-9a-fA-F]{6}$/.test(normalized)) return normalized.toUpperCase();
+    if (/^#[0-9a-fA-F]{3}$/.test(normalized)) {
+      return '#' + normalized[1] + normalized[1] + normalized[2] + normalized[2] + normalized[3] + normalized[3];
+    }
+  }
+
+  // 3) Fallback: textové RGB v item.rgb
+  const rgbText = typeof item?.rgb === 'string' ? item.rgb.trim() : '';
+  if (rgbText) {
+    const matches = rgbText.match(/\d+/g);
+    if (matches && matches.length >= 3) {
+      const [r, g, b] = matches.slice(0, 3).map((part) => {
+        const value = Math.min(255, Math.max(0, parseInt(part, 10) || 0));
+        return value;
       });
       return `rgb(${r}, ${g}, ${b})`;
     }
-    return '#f8f9fa';
-  };
+  }
+
+  // 4) Fallback: pole komponent
+  const components = Array.isArray(item?.rgb_components) ? item.rgb_components : [];
+  if (components.length >= 3) {
+    const [r, g, b] = components.slice(0, 3).map((v) => {
+      const n = Math.min(255, Math.max(0, parseInt(v, 10) || 0));
+      return n;
+    });
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  // 5) Poslední záchrana
+  return '#f8f9fa';
+};
 
   const renderItems = (items) => {
     if (!elements.grid) return;
