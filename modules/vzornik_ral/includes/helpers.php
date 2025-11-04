@@ -97,7 +97,9 @@ if (!function_exists('balp_ral_name_column')) {
         if ($cache !== null) {
             return $cache;
         }
-        $cache = balp_ral_resolve_column($pdo, ['nazev', 'popis', 'name', 'oznaceni_txt']);
+        $cache = balp_ral_resolve_column($pdo, [
+            'nazev','popis','name','oznaceni_txt','oznaceni','barva_nazev','color_name'
+        ]);
         return $cache;
     }
 }
@@ -109,7 +111,9 @@ if (!function_exists('balp_ral_hex_column')) {
         if ($cache !== null) {
             return $cache;
         }
-        $cache = balp_ral_resolve_column($pdo, ['hex', 'hex_kod', 'hexcode', 'barva_hex', 'rgb_hex']);
+        $cache = balp_ral_resolve_column($pdo, [
+            'hex','hex_kod','hexcode','barva_hex','rgb_hex','color','barva'
+        ]);
         return $cache;
     }
 }
@@ -132,11 +136,11 @@ if (!function_exists('balp_ral_rgb_component_column')) {
         $component = strtolower($component);
         $candidates = [];
         if ($component === 'r') {
-            $candidates = ['rgb_r', 'r', 'red'];
+            $candidates = ['rgb_r','r','red','color_r','rgbr'];
         } elseif ($component === 'g') {
-            $candidates = ['rgb_g', 'g', 'green'];
+            $candidates = ['rgb_g','g','green','color_g','rgbg'];
         } elseif ($component === 'b') {
-            $candidates = ['rgb_b', 'b', 'blue'];
+            $candidates = ['rgb_b','b','blue','color_b','rgbb'];
         }
         if (!$candidates) {
             return null;
@@ -297,6 +301,13 @@ if (!function_exists('balp_ral_normalize_row')) {
             $code = null;
         }
         $name = is_string($name) ? trim($name) : $name;
+        if (is_string($name) && $name !== '') {
+            if (function_exists('balp_to_utf8')) {
+                $name = balp_to_utf8($name);
+            } else {
+                $name = @mb_convert_encoding($name, 'UTF-8', ['UTF-8','Windows-1250','ISO-8859-2','Windows-1252']);
+            }
+        }
         if ($name === '') {
             $name = null;
         }
