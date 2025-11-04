@@ -36,6 +36,7 @@
           <th scope="col" data-col="datum_vyroby" class="sortable">Datum výroby</th>
           <th scope="col" data-col="cislo_nh" class="sortable">Číslo NH</th>
           <th scope="col" data-col="nazev_nh" class="sortable">Název</th>
+          <th scope="col" data-col="ral_cislo" class="sortable">RAL</th>
           <th scope="col" data-col="vyrobit_g" class="sortable text-end">Vyrobit (g)</th>
           <th scope="col">Poznámka</th>
         </tr>
@@ -73,6 +74,13 @@
           <dd class="col-sm-8" id="nh-vyr-detail-nh">—</dd>
           <dt class="col-sm-4">Název</dt>
           <dd class="col-sm-8" id="nh-vyr-detail-nazev">—</dd>
+          <dt class="col-sm-4">Odstín RAL</dt>
+          <dd class="col-sm-8">
+            <div class="nh-ral-preview d-none" id="nh-vyr-detail-ral-wrapper">
+              <span class="nh-ral-preview-color" id="nh-vyr-detail-ral-color" aria-hidden="true"></span>
+              <span id="nh-vyr-detail-ral">—</span>
+            </div>
+          </dd>
           <dt class="col-sm-4">Množství</dt>
           <dd class="col-sm-8" id="nh-vyr-detail-mnozstvi">—</dd>
           <dt class="col-sm-4">Poznámka</dt>
@@ -153,6 +161,17 @@
                 <div class="list-group position-absolute w-100 shadow-sm d-none" id="nh-vyr-new-nh-suggestions" style="max-height: 260px; overflow-y: auto; z-index: 1056;"></div>
               </div>
               <div class="form-text" id="nh-vyr-new-nh-meta">Vyberte NH z nabídky.</div>
+            </div>
+            <div class="col-12 col-md-6">
+              <label for="nh-vyr-new-ral" class="form-label">Odstín RAL</label>
+              <select id="nh-vyr-new-ral" class="form-select">
+                <option value="">(Bez odstínu)</option>
+              </select>
+              <div class="form-text" id="nh-vyr-new-ral-meta">Volitelné – odstín RAL se uloží k výrobnímu příkazu.</div>
+              <div class="nh-ral-preview mt-2 d-none" id="nh-vyr-new-ral-preview">
+                <span class="nh-ral-preview-color" id="nh-vyr-new-ral-color" aria-hidden="true"></span>
+                <span class="nh-ral-preview-label" id="nh-vyr-new-ral-label"></span>
+              </div>
             </div>
             <div class="col-12">
               <label for="nh-vyr-new-poznamka" class="form-label">Poznámka</label>

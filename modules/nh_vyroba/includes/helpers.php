@@ -1,6 +1,7 @@
 <?php
 require_once balp_project_root() . '/helpers.php';
 balp_include_module_include('naterove_hmoty', 'helpers');
+balp_include_module_include('vzornik_ral', 'helpers');
 
 if (!function_exists('nh_vyr_normalize_vp_digits')) {
     function nh_vyr_normalize_vp_digits(?string $value): ?string
@@ -280,6 +281,18 @@ if (!function_exists('nh_vyr_vyr_nh_fk')) {
         }
         $column = nh_vyr_resolve_column($pdo, nh_vyr_table_name(), ['idnh', 'id_nh', 'idnhods', 'idnhod', 'idnhmaster']);
         return $cache = $column ?? 'idnh';
+    }
+}
+
+if (!function_exists('nh_vyr_ral_fk')) {
+    function nh_vyr_ral_fk(PDO $pdo): ?string
+    {
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache;
+        }
+        $cache = nh_vyr_resolve_column($pdo, nh_vyr_table_name(), ['idral', 'id_ral', 'ral_id', 'idralbarva', 'idbarva', 'ral']);
+        return $cache;
     }
 }
 
@@ -719,7 +732,31 @@ if (!function_exists('nh_vyr_fetch_detail')) {
         $vTable = sql_quote_ident(nh_vyr_table_name());
         $nhTable = sql_quote_ident(balp_nh_table_name());
         $fkToNh = nh_vyr_vyr_nh_fk($pdo);
-        $joinNh = "LEFT JOIN $nhTable AS nh ON nh.id = v." . sql_quote_ident($fkToNh);
+        $joins = ["LEFT JOIN $nhTable AS nh ON nh.id = v." . sql_quote_ident($fkToNh)];
+
+        $ralFk = nh_vyr_ral_fk($pdo);
+        $ralAlias = 'ral';
+        $ralIdColumn = null;
+        $ralCodeColumn = null;
+        $ralNameColumn = null;
+        $ralHexColumn = null;
+        $ralRgbColumn = null;
+        $ralRColumn = null;
+        $ralGColumn = null;
+        $ralBColumn = null;
+        if ($ralFk) {
+            $ralTable = sql_quote_ident(balp_ral_table_name());
+            $ralIdColumn = balp_ral_id_column($pdo);
+            $ralCodeColumn = balp_ral_code_column($pdo);
+            $ralNameColumn = balp_ral_name_column($pdo);
+            $ralHexColumn = balp_ral_hex_column($pdo);
+            $ralRgbColumn = balp_ral_rgb_column($pdo);
+            $ralRColumn = balp_ral_rgb_component_column($pdo, 'r');
+            $ralGColumn = balp_ral_rgb_component_column($pdo, 'g');
+            $ralBColumn = balp_ral_rgb_component_column($pdo, 'b');
+            $joins[] = "LEFT JOIN $ralTable AS $ralAlias ON $ralAlias." . sql_quote_ident($ralIdColumn)
+                . ' = v.' . sql_quote_ident($ralFk);
+        }
 
         $vpColumn = nh_vyr_vp_column($pdo);
         $dateColumn = nh_vyr_date_column($pdo);
@@ -739,9 +776,37 @@ if (!function_exists('nh_vyr_fetch_detail')) {
         if (nh_vyr_table_has_column($pdo, nh_vyr_table_name(), 'techpor')) {
             $selectParts[] = nh_vyr_column_ref('v', 'techpor') . ' AS techpor';
         }
+        if ($ralFk) {
+            $selectParts[] = 'v.' . sql_quote_ident($ralFk) . ' AS ral_id_raw';
+            if ($ralIdColumn) {
+                $selectParts[] = "$ralAlias." . sql_quote_ident($ralIdColumn) . ' AS ral_id';
+            }
+            if ($ralCodeColumn) {
+                $selectParts[] = "$ralAlias." . sql_quote_ident($ralCodeColumn) . ' AS ral_cislo';
+            }
+            if ($ralNameColumn) {
+                $selectParts[] = "$ralAlias." . sql_quote_ident($ralNameColumn) . ' AS ral_nazev';
+            }
+            if ($ralHexColumn) {
+                $selectParts[] = "$ralAlias." . sql_quote_ident($ralHexColumn) . ' AS ral_hex';
+            }
+            if ($ralRgbColumn) {
+                $selectParts[] = "$ralAlias." . sql_quote_ident($ralRgbColumn) . ' AS ral_rgb';
+            }
+            if ($ralRColumn) {
+                $selectParts[] = "$ralAlias." . sql_quote_ident($ralRColumn) . ' AS ral_rgb_r';
+            }
+            if ($ralGColumn) {
+                $selectParts[] = "$ralAlias." . sql_quote_ident($ralGColumn) . ' AS ral_rgb_g';
+            }
+            if ($ralBColumn) {
+                $selectParts[] = "$ralAlias." . sql_quote_ident($ralBColumn) . ' AS ral_rgb_b';
+            }
+        }
 
+        $joinSql = implode(' ', $joins);
         $selectSql = 'SELECT ' . implode(', ', $selectParts)
-            . " FROM $vTable AS v $joinNh WHERE v.id = :id LIMIT 1";
+            . " FROM $vTable AS v $joinSql WHERE v.id = :id LIMIT 1";
 
         $stmt = $pdo->prepare($selectSql);
         $stmt->execute([':id' => $id]);
@@ -981,7 +1046,51 @@ if (!function_exists('nh_vyr_normalize_header_row')) {
         }
         $result['poznamka'] = ($noteValue === '' ? null : $noteValue);
 
+        $ralIdValue = nh_vyr_first_value($row, ['ral_id', 'ral_id_raw']);
+        if ($ralIdValue === null || $ralIdValue === '') {
+            $result['ral_id'] = null;
+        } else {
+            $result['ral_id'] = (int)$ralIdValue;
+            if ($result['ral_id'] <= 0) {
+                $result['ral_id'] = null;
+            }
+        }
+
+        $ralCode = nh_vyr_first_value($row, ['ral_cislo']);
+        if (is_string($ralCode)) {
+            $ralCode = trim($ralCode);
+            if ($ralCode === '') {
+                $ralCode = null;
+            }
+        }
+        $result['ral_cislo'] = $ralCode;
+
+        $ralName = nh_vyr_first_value($row, ['ral_nazev']);
+        if (is_string($ralName)) {
+            $ralName = trim($ralName);
+            if ($ralName === '') {
+                $ralName = null;
+            }
+        }
+        $result['ral_nazev'] = $ralName;
+
+        $ralHexRaw = nh_vyr_first_value($row, ['ral_hex']);
+        $ralHex = balp_ral_normalize_hex($ralHexRaw);
+        $ralRgbRaw = nh_vyr_first_value($row, ['ral_rgb']);
+        $ralRgbR = nh_vyr_first_value($row, ['ral_rgb_r']);
+        $ralRgbG = nh_vyr_first_value($row, ['ral_rgb_g']);
+        $ralRgbB = nh_vyr_first_value($row, ['ral_rgb_b']);
+        $ralRgbNormalized = balp_ral_normalize_rgb_components($ralRgbRaw, $ralRgbR, $ralRgbG, $ralRgbB);
+        if ($ralHex === null && $ralRgbNormalized['components']) {
+            $ralHex = sprintf('#%02X%02X%02X', $ralRgbNormalized['components'][0], $ralRgbNormalized['components'][1], $ralRgbNormalized['components'][2]);
+        }
+        $result['ral_hex'] = $ralHex;
+        $result['ral_rgb'] = $ralRgbNormalized['text'];
+        $result['ral_rgb_components'] = $ralRgbNormalized['components'];
+        $result['ral_color'] = $ralHex ?? $ralRgbNormalized['css'];
+
         unset($result['cislo_vp_raw'], $result['datum_vyroby_raw'], $result['vyrobit_g_raw'], $result['poznamka_raw']);
+        unset($result['ral_id_raw'], $result['ral_rgb_r'], $result['ral_rgb_g'], $result['ral_rgb_b']);
 
         return $result;
     }

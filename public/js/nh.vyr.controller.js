@@ -22,6 +22,7 @@
   const createEndpoint = apiBase + '/api/nh_vyr_create.php';
   const nhSearchEndpoint = apiBase + '/api/nh_vyr_nh.php';
   const nextVpEndpoint = apiBase + '/api/nh_vyr_next_vp.php';
+  const ralListEndpoint = apiBase + '/api/vzornik_ral_list.php';
 
   const storageKey = 'balp_token';
   const getToken = () => { try { return localStorage.getItem(storageKey) || ''; } catch { return ''; } };
@@ -99,6 +100,11 @@
     newNh: document.getElementById('nh-vyr-new-nh'),
     newNhMeta: document.getElementById('nh-vyr-new-nh-meta'),
     newNhSuggestions: document.getElementById('nh-vyr-new-nh-suggestions'),
+    newRal: document.getElementById('nh-vyr-new-ral'),
+    newRalMeta: document.getElementById('nh-vyr-new-ral-meta'),
+    newRalPreview: document.getElementById('nh-vyr-new-ral-preview'),
+    newRalPreviewColor: document.getElementById('nh-vyr-new-ral-color'),
+    newRalPreviewLabel: document.getElementById('nh-vyr-new-ral-label'),
     newPoznamka: document.getElementById('nh-vyr-new-poznamka'),
     detail: {
       vp: document.getElementById('nh-vyr-detail-vp'),
@@ -106,6 +112,9 @@
       datum: document.getElementById('nh-vyr-detail-datum'),
       nh: document.getElementById('nh-vyr-detail-nh'),
       nazev: document.getElementById('nh-vyr-detail-nazev'),
+      ralWrapper: document.getElementById('nh-vyr-detail-ral-wrapper'),
+      ral: document.getElementById('nh-vyr-detail-ral'),
+      ralColor: document.getElementById('nh-vyr-detail-ral-color'),
       mnozstvi: document.getElementById('nh-vyr-detail-mnozstvi'),
       poznamka: document.getElementById('nh-vyr-detail-poznamka'),
       copy: document.getElementById('nh-vyr-detail-copy'),
@@ -138,9 +147,17 @@
     selectedNh: null,
     suggestions: [],
     suggestionsToken: 0,
+    ralId: null,
   };
 
   const defaultNhMetaText = 'Vyberte NH z nabídky.';
+  const defaultRalMetaText = 'Volitelné – odstín RAL se uloží k výrobnímu příkazu.';
+
+  const ralState = {
+    items: [],
+    loaded: false,
+    loading: false,
+  };
 
   let nhSearchTimer = null;
 
@@ -211,6 +228,147 @@
     el.newNhSuggestions.classList.remove('d-none');
   }
 
+  function buildRalLabel(item) {
+    if (!item) return '';
+    const code = item.ral_cislo ?? item.cislo ?? '';
+    const name = item.ral_nazev ?? item.nazev ?? '';
+    const parts = [code, name].filter(Boolean);
+    if (parts.length) return parts.join(' – ');
+    const id = item.ral_id ?? item.id;
+    return id ? `ID ${id}` : '';
+  }
+
+  function sanitizeColorCss(value) {
+    if (value === null || value === undefined) return null;
+    const raw = String(value).trim();
+    if (/^#([0-9a-fA-F]{6})$/.test(raw)) {
+      return raw.toUpperCase();
+    }
+    if (/^#([0-9a-fA-F]{3})$/.test(raw)) {
+      return '#' + raw[1] + raw[1] + raw[2] + raw[2] + raw[3] + raw[3];
+    }
+    const rgbMatch = raw.match(/^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/i);
+    if (rgbMatch) {
+      const r = Math.min(255, parseInt(rgbMatch[1], 10));
+      const g = Math.min(255, parseInt(rgbMatch[2], 10));
+      const b = Math.min(255, parseInt(rgbMatch[3], 10));
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+    return null;
+  }
+
+  function toCssColor(item) {
+    if (!item) return null;
+    if (item.ral_color) return item.ral_color;
+    if (item.hex) return item.hex;
+    if (item.color) return item.color;
+    if (item.ral_hex) return item.ral_hex;
+    const rgb = item.ral_rgb ?? item.rgb;
+    if (rgb) {
+      const text = String(rgb).trim();
+      if (/^\d/.test(text)) {
+        return `rgb(${text})`;
+      }
+      return text;
+    }
+    const components = item.ral_rgb_components ?? item.rgb_components;
+    if (Array.isArray(components) && components.length >= 3) {
+      const [r, g, b] = components.slice(0, 3).map((value) => {
+        const num = Number(value);
+        if (Number.isFinite(num)) {
+          return Math.min(255, Math.max(0, Math.round(num)));
+        }
+        const parsed = parseInt(String(value), 10);
+        return Number.isFinite(parsed) ? Math.min(255, Math.max(0, parsed)) : 0;
+      });
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+    return null;
+  }
+
+  function findRalItem(id) {
+    if (id === null || id === undefined) return null;
+    const numericId = Number(id);
+    if (!Number.isFinite(numericId)) return null;
+    return ralState.items.find((item) => Number(item?.id ?? item?.ral_id ?? 0) === numericId) || null;
+  }
+
+  function populateRalOptions(items) {
+    if (!el.newRal) return;
+    const current = createState.ralId !== null ? String(createState.ralId) : (el.newRal.value || '');
+    const options = ['<option value="">(Bez odstínu)</option>'];
+    items.forEach((item) => {
+      const id = item?.id ?? item?.ral_id;
+      if (id === null || id === undefined) {
+        return;
+      }
+      const value = String(id);
+      const selectedAttr = current !== '' && current === value ? ' selected' : '';
+      const label = buildRalLabel(item) || `ID ${value}`;
+      options.push(`<option value="${escapeHtml(value)}"${selectedAttr}>${escapeHtml(label)}</option>`);
+    });
+    el.newRal.innerHTML = options.join('');
+    if (current !== '') {
+      el.newRal.value = current;
+    }
+  }
+
+  function updateRalPreview() {
+    if (!el.newRalPreview || !el.newRalPreviewColor || !el.newRalPreviewLabel) return;
+    const id = createState.ralId;
+    const item = id ? findRalItem(id) : null;
+    if (!item) {
+      el.newRalPreview.classList.add('d-none');
+      el.newRalPreviewColor.style.background = '';
+      el.newRalPreviewLabel.textContent = '';
+      if (el.newRalMeta) el.newRalMeta.textContent = defaultRalMetaText;
+      return;
+    }
+    const label = buildRalLabel(item) || `ID ${item?.id ?? item?.ral_id ?? id}`;
+    const colorCss = sanitizeColorCss(toCssColor(item));
+    el.newRalPreviewLabel.textContent = label;
+    if (colorCss) {
+      el.newRalPreviewColor.style.background = colorCss;
+      el.newRalPreviewColor.classList.remove('nh-ral-preview-color--empty');
+    } else {
+      el.newRalPreviewColor.style.background = '';
+      el.newRalPreviewColor.classList.add('nh-ral-preview-color--empty');
+    }
+    el.newRalPreview.classList.remove('d-none');
+    if (el.newRalMeta) {
+      el.newRalMeta.textContent = `Vybrán odstín RAL: ${label}`;
+    }
+  }
+
+  async function ensureRalOptions(force = false) {
+    if (!el.newRal) return;
+    if (ralState.loading) return;
+    if (ralState.loaded && !force) return;
+    ralState.loading = true;
+    if (el.newRalMeta) el.newRalMeta.textContent = 'Načítám odstíny RAL…';
+    try {
+      const params = new URLSearchParams({ limit: '500' });
+      const data = await apiFetch(`${ralListEndpoint}?${params.toString()}`);
+      const items = Array.isArray(data?.items) ? data.items : [];
+      ralState.items = items;
+      ralState.loaded = true;
+      populateRalOptions(items);
+      if (el.newRalMeta) {
+        el.newRalMeta.textContent = items.length
+          ? `Načteno ${items.length} odstínů RAL.`
+          : 'Žádné odstíny RAL nejsou k dispozici.';
+      }
+      updateRalPreview();
+    } catch (error) {
+      console.error(error);
+      if (el.newRalMeta) {
+        el.newRalMeta.textContent = error?.message || 'Načtení odstínů RAL selhalo.';
+      }
+    } finally {
+      ralState.loading = false;
+    }
+  }
+
   function setSelectedNh(item) {
     createState.selectedNh = item || null;
     createState.nhId = item && item.id ? Number(item.id) : null;
@@ -262,13 +420,22 @@
     createState.selectedNh = null;
     createState.suggestions = [];
     createState.suggestionsToken += 1;
+    createState.ralId = null;
     if (el.newForm) el.newForm.reset();
     if (el.newCisloVp) el.newCisloVp.value = '';
     if (el.newDatum) el.newDatum.value = '';
     if (el.newMnozstvi) el.newMnozstvi.value = '';
     if (el.newNh) el.newNh.value = '';
+    if (el.newRal) el.newRal.value = '';
     if (el.newPoznamka) el.newPoznamka.value = '';
     if (el.newNhMeta) el.newNhMeta.textContent = defaultNhMetaText;
+    if (el.newRalMeta) el.newRalMeta.textContent = defaultRalMetaText;
+    if (el.newRalPreview) el.newRalPreview.classList.add('d-none');
+    if (el.newRalPreviewColor) {
+      el.newRalPreviewColor.style.background = '';
+      el.newRalPreviewColor.classList.remove('nh-ral-preview-color--empty');
+    }
+    if (el.newRalPreviewLabel) el.newRalPreviewLabel.textContent = '';
     setNewAlert('');
     hideNhSuggestions();
     if (nhSearchTimer) {
@@ -293,6 +460,7 @@
 
   function openNewModal() {
     resetNewForm();
+    ensureRalOptions();
     prefillNextVp();
     const modalInstance = getNewModalInstance();
     if (modalInstance) {
@@ -310,7 +478,7 @@
   function renderRows(items) {
     if (!el.tableBody) return;
     if (!Array.isArray(items) || items.length === 0) {
-      el.tableBody.innerHTML = '<tr><td colspan="6"><em>Žádné výsledky.</em></td></tr>';
+      el.tableBody.innerHTML = '<tr><td colspan="7"><em>Žádné výsledky.</em></td></tr>';
       return;
     }
     const rows = items.map((row) => {
@@ -318,6 +486,13 @@
       const datum = row.datum_vyroby ? String(row.datum_vyroby).slice(0, 10) : '';
       const nh = row.cislo_nh ?? '';
       const name = row.nazev_nh ?? row.nazev ?? '';
+      const ralLabel = buildRalLabel(row);
+      const ralColorCss = sanitizeColorCss(toCssColor(row));
+      const ralSwatch = ralColorCss ? `<span class="nh-ral-swatch" style="background:${ralColorCss};"></span>` : '';
+      const ralText = ralLabel || (ralColorCss ? ralColorCss : '');
+      const ralContent = (ralSwatch || ralText)
+        ? `<div class="d-flex align-items-center gap-2">${ralSwatch}${escapeHtml(ralText)}</div>`
+        : '—';
       const vyrobitVal = row.vyrobit_g;
       const vyrobit = typeof vyrobitVal === 'number' ? formatNumber(vyrobitVal, 3) : (vyrobitVal ?? '');
       const pozn = row.poznamka ?? '';
@@ -328,6 +503,7 @@
         `<td>${datum}</td>` +
         `<td>${nh}</td>` +
         `<td>${name}</td>` +
+        `<td>${ralContent}</td>` +
         `<td class="text-end">${vyrobit}</td>` +
         `<td>${pozn}</td>` +
       `</tr>`;
@@ -481,6 +657,15 @@
     });
   }
 
+  if (el.newRal) {
+    el.newRal.addEventListener('change', () => {
+      const value = el.newRal.value;
+      createState.ralId = value ? Number(value) : null;
+      setNewAlert('');
+      updateRalPreview();
+    });
+  }
+
   document.addEventListener('click', (ev) => {
     if (!el.newNh) return;
     if (ev.target === el.newNh) return;
@@ -521,6 +706,9 @@
         vyrobit_g: vyrobitValue,
         poznamka: (el.newPoznamka?.value || '').trim() || null,
       };
+      if (createState.ralId) {
+        payload.ral_id = createState.ralId;
+      }
       if (!payload.datum_vyroby) delete payload.datum_vyroby;
       if (payload.vyrobit_g === null || Number.isNaN(payload.vyrobit_g)) delete payload.vyrobit_g;
       if (!payload.poznamka) delete payload.poznamka;
@@ -677,6 +865,24 @@
     if (el.detail.datum) el.detail.datum.textContent = datum || '—';
     if (el.detail.nh) el.detail.nh.textContent = nh || '—';
     if (el.detail.nazev) el.detail.nazev.textContent = nazev || '—';
+    const detailRalLabel = buildRalLabel(row);
+    const detailRalColor = sanitizeColorCss(toCssColor(row));
+    if (el.detail.ral) {
+      el.detail.ral.textContent = detailRalLabel || (detailRalColor || '—');
+    }
+    if (el.detail.ralColor) {
+      if (detailRalColor) {
+        el.detail.ralColor.style.background = detailRalColor;
+        el.detail.ralColor.classList.remove('nh-ral-preview-color--empty');
+      } else {
+        el.detail.ralColor.style.background = '';
+        el.detail.ralColor.classList.add('nh-ral-preview-color--empty');
+      }
+    }
+    if (el.detail.ralWrapper) {
+      const visible = Boolean(detailRalLabel || detailRalColor);
+      el.detail.ralWrapper.classList.toggle('d-none', !visible);
+    }
     if (el.detail.mnozstvi) {
       const vyrobitText = formatNumber(row.vyrobit_g, 3) || (vyrobit !== '' ? String(vyrobit) : '');
       el.detail.mnozstvi.textContent = vyrobitText !== '' ? vyrobitText : '—';
