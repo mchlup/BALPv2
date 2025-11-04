@@ -483,3 +483,36 @@ body.sidebar-collapsed .sidebar-bottom {
 .autocomplete-results .list-group-item:hover {
   background-color: #f8f9fa;
 }
+
+.nh-ral-swatch {
+  display: inline-block;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.3rem;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background-color: #f8f9fa;
+}
+
+.nh-ral-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.nh-ral-preview-color {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background-color: #f8f9fa;
+}
+
+.nh-ral-preview-color--empty {
+  background-image: linear-gradient(45deg, rgba(0, 0, 0, 0.08) 25%, transparent 25%, transparent 50%, rgba(0, 0, 0, 0.08) 50%, rgba(0, 0, 0, 0.08) 75%, transparent 75%, transparent);
+  background-size: 0.6rem 0.6rem;
+}
+
+.nh-ral-preview-label {
+  font-size: 0.9rem;
+  color: #343a40;
+}

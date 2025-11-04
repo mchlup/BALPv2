@@ -1,0 +1,27 @@
+<div class="module-vzornik-ral">
+  <div class="ral-toolbar row g-2 align-items-end mb-3">
+    <div class="col-12 col-md-6 col-lg-4">
+      <label class="form-label" for="ral-search">Hledat odstín</label>
+      <input type="search" id="ral-search" class="form-control" placeholder="Zadejte číslo nebo název odstínu…" autocomplete="off">
+    </div>
+    <div class="col-auto">
+      <button type="button" class="btn btn-primary" id="ral-search-submit">Hledat</button>
+    </div>
+    <div class="col-auto">
+      <button type="button" class="btn btn-outline-secondary" id="ral-search-reset">Reset</button>
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <div id="ral-meta" class="text-muted small">Načítám…</div>
+    <div class="ral-actions d-flex gap-2">
+      <span class="text-muted small">Odstíny jsou načteny z databáze <code>balp_ral</code>.</span>
+    </div>
+  </div>
+
+  <div id="ral-empty" class="alert alert-info d-none" role="status">
+    Nebyly nalezeny žádné odstíny.
+  </div>
+
+  <div id="ral-grid" class="ral-grid" aria-live="polite" aria-busy="false"></div>
+</div>

@@ -4,6 +4,7 @@ require_once balp_api_path('jwt_helper.php');
 require_once balp_project_root() . '/helpers.php';
 balp_include_module_include('naterove_hmoty', 'helpers');
 balp_include_module_include('nh_vyroba', 'helpers');
+balp_include_module_include('vzornik_ral', 'helpers');
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -44,7 +45,32 @@ try {
     $nhTable = sql_quote_ident(balp_nh_table_name());
     $alias = 'v';
     $fkToNh = nh_vyr_vyr_nh_fk($pdo);
-    $join = "LEFT JOIN $nhTable AS nh ON nh.id = v." . sql_quote_ident($fkToNh);
+    $joins = ["LEFT JOIN $nhTable AS nh ON nh.id = v." . sql_quote_ident($fkToNh)];
+
+    $ralFk = nh_vyr_ral_fk($pdo);
+    $ralAlias = 'ral';
+    $ralIdColumn = null;
+    $ralCodeColumn = null;
+    $ralNameColumn = null;
+    $ralHexColumn = null;
+    $ralRgbColumn = null;
+    $ralRColumn = null;
+    $ralGColumn = null;
+    $ralBColumn = null;
+    if ($ralFk) {
+        $ralTable = sql_quote_ident(balp_ral_table_name());
+        $ralIdColumn = balp_ral_id_column($pdo);
+        $ralCodeColumn = balp_ral_code_column($pdo);
+        $ralNameColumn = balp_ral_name_column($pdo);
+        $ralHexColumn = balp_ral_hex_column($pdo);
+        $ralRgbColumn = balp_ral_rgb_column($pdo);
+        $ralRColumn = balp_ral_rgb_component_column($pdo, 'r');
+        $ralGColumn = balp_ral_rgb_component_column($pdo, 'g');
+        $ralBColumn = balp_ral_rgb_component_column($pdo, 'b');
+        $joins[] = "LEFT JOIN $ralTable AS $ralAlias ON $ralAlias." . sql_quote_ident($ralIdColumn)
+            . ' = v.' . sql_quote_ident($ralFk);
+    }
+    $join = implode(' ', $joins);
 
     $columns = [
         'id' => 'v.id',
@@ -55,6 +81,12 @@ try {
         'vyrobit_g' => $qtyColumn ? nh_vyr_column_ref($alias, $qtyColumn) : 'v.id',
         'poznamka' => $noteColumn ? nh_vyr_column_ref($alias, $noteColumn) : 'v.id',
     ];
+    if ($ralFk && $ralCodeColumn) {
+        $columns['ral_cislo'] = "$ralAlias." . sql_quote_ident($ralCodeColumn);
+    }
+    if ($ralFk && $ralNameColumn) {
+        $columns['ral_nazev'] = "$ralAlias." . sql_quote_ident($ralNameColumn);
+    }
 
     $orderExpr = $columns['cislo_vp'];
     if (isset($columns[$sortCol])) {
@@ -98,13 +130,46 @@ try {
     $qtySelect = $qtyColumn ? nh_vyr_column_ref($alias, $qtyColumn) . ' AS vyrobit_g_raw' : 'NULL AS vyrobit_g_raw';
     $noteSelect = $noteColumn ? nh_vyr_column_ref($alias, $noteColumn) . ' AS poznamka_raw' : 'NULL AS poznamka_raw';
 
-    $selectSql = "SELECT v.id, $vpSelect, $dateSelect, $qtySelect, $noteSelect, v." . sql_quote_ident($fkToNh) . " AS idnh,
-        nh.cislo AS cislo_nh, nh.nazev AS nazev_nh
-        FROM $table AS v
-        $join
-        $whereSql
-        ORDER BY $orderSql
-        LIMIT :limit OFFSET :offset";
+    $selectParts = [
+        'v.id',
+        $vpSelect,
+        $dateSelect,
+        $qtySelect,
+        $noteSelect,
+        'v.' . sql_quote_ident($fkToNh) . ' AS idnh',
+        'nh.cislo AS cislo_nh',
+        'nh.nazev AS nazev_nh',
+    ];
+    if ($ralFk) {
+        $selectParts[] = 'v.' . sql_quote_ident($ralFk) . ' AS ral_id_raw';
+        if ($ralIdColumn) {
+            $selectParts[] = "$ralAlias." . sql_quote_ident($ralIdColumn) . ' AS ral_id';
+        }
+        if ($ralCodeColumn) {
+            $selectParts[] = "$ralAlias." . sql_quote_ident($ralCodeColumn) . ' AS ral_cislo';
+        }
+        if ($ralNameColumn) {
+            $selectParts[] = "$ralAlias." . sql_quote_ident($ralNameColumn) . ' AS ral_nazev';
+        }
+        if ($ralHexColumn) {
+            $selectParts[] = "$ralAlias." . sql_quote_ident($ralHexColumn) . ' AS ral_hex';
+        }
+        if ($ralRgbColumn) {
+            $selectParts[] = "$ralAlias." . sql_quote_ident($ralRgbColumn) . ' AS ral_rgb';
+        }
+        if ($ralRColumn) {
+            $selectParts[] = "$ralAlias." . sql_quote_ident($ralRColumn) . ' AS ral_rgb_r';
+        }
+        if ($ralGColumn) {
+            $selectParts[] = "$ralAlias." . sql_quote_ident($ralGColumn) . ' AS ral_rgb_g';
+        }
+        if ($ralBColumn) {
+            $selectParts[] = "$ralAlias." . sql_quote_ident($ralBColumn) . ' AS ral_rgb_b';
+        }
+    }
+
+    $selectSql = 'SELECT ' . implode(', ', $selectParts)
+        . " FROM $table AS v $join $whereSql ORDER BY $orderSql LIMIT :limit OFFSET :offset";
 
     $stmt = $pdo->prepare($selectSql);
     foreach ($params as $k => $v) {

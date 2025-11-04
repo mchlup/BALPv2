@@ -4,6 +4,7 @@ require_once balp_api_path('jwt_helper.php');
 require_once balp_project_root() . '/helpers.php';
 balp_include_module_include('naterove_hmoty', 'helpers');
 balp_include_module_include('nh_vyroba', 'helpers');
+balp_include_module_include('vzornik_ral', 'helpers');
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -95,6 +96,34 @@ try {
         $note = null;
     }
 
+    $ralId = null;
+    $ralInput = $payload['ral_id'] ?? ($payload['idral'] ?? null);
+    if ($ralInput !== null && $ralInput !== '') {
+        if (is_numeric($ralInput)) {
+            $ralId = (int)$ralInput;
+        } elseif (is_string($ralInput)) {
+            $filtered = trim($ralInput);
+            if ($filtered !== '' && is_numeric($filtered)) {
+                $ralId = (int)$filtered;
+            }
+        }
+    }
+    $ralCodeInput = $payload['ral_cislo'] ?? ($payload['ral_code'] ?? null);
+    $ralCodeInput = is_string($ralCodeInput) ? trim($ralCodeInput) : '';
+    if ($ralId !== null && $ralId > 0) {
+        $ralRow = balp_ral_fetch($pdo, $ralId);
+        if (!$ralRow) {
+            respond_json(['error' => 'Zvolený odstín RAL nebyl nalezen.'], 400);
+        }
+    } elseif ($ralCodeInput !== '') {
+        $ralRow = balp_ral_lookup($pdo, $ralCodeInput);
+        if ($ralRow) {
+            $ralId = isset($ralRow['id']) ? (int)$ralRow['id'] : null;
+        } else {
+            respond_json(['error' => 'Zadaný odstín RAL nebyl nalezen.'], 400);
+        }
+    }
+
     $table = sql_quote_ident(nh_vyr_table_name());
     $columns = [];
     $placeholders = [];
@@ -129,6 +158,13 @@ try {
         $columns[] = sql_quote_ident($noteColumn);
         $placeholders[] = ':note';
         $params[':note'] = $note;
+    }
+
+    $ralColumn = nh_vyr_ral_fk($pdo);
+    if ($ralColumn && $ralId !== null && $ralId > 0) {
+        $columns[] = sql_quote_ident($ralColumn);
+        $placeholders[] = ':ral';
+        $params[':ral'] = $ralId;
     }
 
     if (!$columns) {
