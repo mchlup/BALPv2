@@ -273,23 +273,23 @@ if (!function_exists('balp_ral_normalize_rgb_components')) {
 if (!function_exists('balp_ral_normalize_row')) {
     function balp_ral_normalize_row(PDO $pdo, array $row): array
 {
-    $idColumn = balp_ral_id_column($pdo);
+    $idColumn   = balp_ral_id_column($pdo);
     $codeColumn = balp_ral_code_column($pdo);
     $nameColumn = balp_ral_name_column($pdo);
-    $hexColumn = balp_ral_hex_column($pdo);
-    $rgbColumn = balp_ral_rgb_column($pdo);
-    $rColumn = balp_ral_rgb_component_column($pdo, 'r');
-    $gColumn = balp_ral_rgb_component_column($pdo, 'g');
-    $bColumn = balp_ral_rgb_component_column($pdo, 'b');
+    $hexColumn  = balp_ral_hex_column($pdo);
+    $rgbColumn  = balp_ral_rgb_column($pdo);
+    $rColumn    = balp_ral_rgb_component_column($pdo, 'r');
+    $gColumn    = balp_ral_rgb_component_column($pdo, 'g');
+    $bColumn    = balp_ral_rgb_component_column($pdo, 'b');
 
-    $id = balp_ral_first_value($row, ['id', $idColumn]);
-    $code = $codeColumn ? balp_ral_first_value($row, [$codeColumn]) : null;
-    $name = $nameColumn ? balp_ral_first_value($row, [$nameColumn]) : null;
-    $hex = $hexColumn ? balp_ral_first_value($row, [$hexColumn]) : null;
-    $rgbString = $rgbColumn ? balp_ral_first_value($row, [$rgbColumn]) : null;
-    $rValue = $rColumn ? balp_ral_first_value($row, [$rColumn]) : null;
-    $gValue = $gColumn ? balp_ral_first_value($row, [$gColumn]) : null;
-    $bValue = $bColumn ? balp_ral_first_value($row, [$bColumn]) : null;
+    $id        = balp_ral_first_value($row, ['id', $idColumn]);
+    $code      = $codeColumn ? balp_ral_first_value($row, [$codeColumn]) : null;
+    $name      = $nameColumn ? balp_ral_first_value($row, [$nameColumn]) : null;
+    $hex       = $hexColumn  ? balp_ral_first_value($row, [$hexColumn])  : null;
+    $rgbString = $rgbColumn  ? balp_ral_first_value($row, [$rgbColumn])  : null;
+    $rValue    = $rColumn    ? balp_ral_first_value($row, [$rColumn])    : null;
+    $gValue    = $gColumn    ? balp_ral_first_value($row, [$gColumn])    : null;
+    $bValue    = $bColumn    ? balp_ral_first_value($row, [$bColumn])    : null;
 
     $hexNorm = balp_ral_normalize_hex($hex);
     $rgbNorm = balp_ral_normalize_rgb_components($rgbString, $rValue, $gValue, $bValue);
@@ -298,37 +298,60 @@ if (!function_exists('balp_ral_normalize_row')) {
         $hexNorm = sprintf('#%02X%02X%02X', $rgbNorm['components'][0], $rgbNorm['components'][1], $rgbNorm['components'][2]);
     }
 
+    // --- normalizace kódu odstínu ---
     $code = is_string($code) ? trim($code) : $code;
-    if ($code === '') {
-        $code = null;
-    }
+    if ($code === '') $code = null;
 
+    // --- normalizace názvu + oprava kódování ---
     $name = is_string($name) ? trim($name) : $name;
     if (is_string($name) && $name !== '') {
         if (function_exists('balp_to_utf8')) {
+            // pokud projekt má vlastní helper, použijeme ho
             $name = balp_to_utf8($name);
         } else {
-            // převod z CP1250 nebo podobných středoevropských sad do UTF-8
-            $name = @mb_convert_encoding($name, 'UTF-8', ['Windows-1250', 'ISO-8859-2', 'UTF-8', 'Windows-1252']);
+            // 1) je to už validní UTF-8? pokud ano, necháme být
+            $isUtf8 = mb_check_encoding($name, 'UTF-8');
+
+            if (!$isUtf8) {
+                // 2) není to UTF-8 -> convert z CP1250 (fallback ISO-8859-2)
+                $converted = @iconv('Windows-1250', 'UTF-8//IGNORE', $name);
+                if ($converted === false || $converted === '' ) {
+                    $converted = @iconv('ISO-8859-2', 'UTF-8//IGNORE', $name);
+                }
+                if ($converted !== false && $converted !== '') {
+                    $name = $converted;
+                }
+            } else {
+                // 3) je to sice UTF-8, ale může to být mojibake (např. Ĺľ, Ä›, Å™ ...)
+                // pokud detekujeme typické znaky, zkusíme round-trip opravu
+                if (preg_match('/[ĹĚÄÅÖÜÂÂÃÄŹŻŠŤŘČĎŇĽĺľťďňěščřžýáíéóúůÄ›Å™]/u', $name)) {
+                    $rt = @iconv('UTF-8', 'Windows-1250//IGNORE', $name);
+                    if ($rt !== false && $rt !== '') {
+                        $rt = @iconv('Windows-1250', 'UTF-8//IGNORE', $rt);
+                        if ($rt !== false && $rt !== '') {
+                            $name = $rt;
+                        }
+                    }
+                }
+            }
         }
     }
+    if ($name === '') $name = null;
 
-    if ($name === '') {
-        $name = null;
-    }
-
+    // --- ID jako integer ---
     $id = is_numeric($id) ? (int)$id : null;
 
     return [
-        'id' => $id,
-        'cislo' => $code,
-        'nazev' => $name,
-        'hex' => $hexNorm,
-        'rgb' => $rgbNorm['text'],
+        'id'             => $id,
+        'cislo'          => $code,
+        'nazev'          => $name,
+        'hex'            => $hexNorm,
+        'rgb'            => $rgbNorm['text'],
         'rgb_components' => $rgbNorm['components'],
-        'color' => $hexNorm ?? $rgbNorm['css'],
-      ];
-    }
+        'color'          => $hexNorm ?? $rgbNorm['css'],
+    ];
+}
+
 }
 
 if (!function_exists('balp_ral_fetch')) {
