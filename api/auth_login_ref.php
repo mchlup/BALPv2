@@ -123,7 +123,8 @@ try {
 
     balp_send_json(['ok'=>true, 'token'=>$token, 'user'=>['username'=>$username]]);
 }
-catch (Exception $e) {
-    balp_send_json(['error'=>$e->getMessage()], 500);
+catch (Throwable $e) {
+    error_log($e->getMessage());
+    balp_send_json(['error'=>'Nastala chyba.'], 500);
 }
 

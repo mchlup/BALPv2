@@ -9,6 +9,7 @@ header('Content-Language: cs');
 
 require_once balp_api_path('auth_helpers.php');
 require_once balp_api_path('jwt_helper.php');
+require_once balp_project_root() . '/helpers.php';
 
 function j($d, int $code=200) {
   http_response_code($code);
@@ -18,21 +19,14 @@ function j($d, int $code=200) {
 
 // Safe token check
 try {
-  $config_file = balp_project_root() . '/config/config.php';
-  $CONFIG = [];
-  if (file_exists($config_file)) require $config_file;
-  $A = $CONFIG['auth'] ?? [];
-  $JWT_SECRET = $A['jwt_secret'] ?? ($CONFIG['jwt_secret'] ?? (getenv('BALP_JWT_SECRET') ?: 'change_this_secret'));
+  $config = cfg();
+  $authConfig = $config['auth'] ?? [];
+  $JWT_SECRET = $authConfig['jwt_secret'] ?? ($config['jwt_secret'] ?? (getenv('BALP_JWT_SECRET') ?: 'change_this_secret'));
   $token = balp_get_bearer_token();
   if (!$token) j(['error'=>'missing token'], 401);
-  try { jwt_decode($token, $JWT_SECRET, true); } catch (Throwable $e) { j(['error'=>$e->getMessage()], 401); }
+  try { jwt_decode($token, $JWT_SECRET, true); } catch (Throwable $e) { error_log($e->getMessage()); j(['error'=>'Nastala chyba.'], 401); }
 
-  $dsn  = $CONFIG['db_dsn']  ?? getenv('BALP_DB_DSN');
-  $usr  = $CONFIG['db_user'] ?? getenv('BALP_DB_USER');
-  $pwd  = $CONFIG['db_pass'] ?? getenv('BALP_DB_PASS');
-  if (!$dsn) j(['error'=>'DB DSN missing'], 500);
-
-  $pdo = new PDO($dsn, $usr, $pwd, balp_utf8_pdo_options());
+  $pdo = db();
 
   // Params
   $search   = trim((string)($_GET['search'] ?? ''));
@@ -84,5 +78,6 @@ try {
 
   j(['total'=>$total, 'items'=>$rows]);
 } catch (Throwable $e) {
-  j(['error'=>$e->getMessage()], 500);
+  error_log($e->getMessage());
+  j(['error'=>'Nastala chyba.'], 500);
 }

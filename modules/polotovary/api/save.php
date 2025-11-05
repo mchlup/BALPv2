@@ -64,7 +64,10 @@ try {
   $c   = cfg();
   $err = null;
   $pdo = db_try_connect($c, $err);
-  if (!$pdo) { throw new Exception("DB connect failed: ".$err); }
+  if (!$pdo) {
+    if ($err) error_log('[pol_save] ' . $err);
+    throw new RuntimeException('DB connect failed');
+  }
 
   // ---------- vstup ----------
   $raw = file_get_contents('php://input');
@@ -173,9 +176,11 @@ try {
   echo json_encode(['ok'=>true,'id'=>$polId], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
 
 } catch (Throwable $e) {
-  if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
+  if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();
   $detail = ($e instanceof PDOException && isset($e->errorInfo[2])) ? $e->errorInfo[2] : null;
-  error_log("[pol_save] ".$e->getMessage().($detail ? " | ".$detail : ""));
+  $log = '[pol_save] ' . $e->getMessage();
+  if ($detail) { $log .= ' | ' . $detail; }
+  error_log($log);
   http_response_code(500);
-  echo json_encode(['ok'=>false,'err'=>$e->getMessage(),'detail'=>$detail], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+  echo json_encode(['ok'=>false,'err'=>'Nastala chyba.'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
 }

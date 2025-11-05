@@ -5,30 +5,21 @@ header('Content-Language: cs');
 
 require_once balp_api_path('auth_helpers.php');
 require_once balp_api_path('jwt_helper.php');
-
-// Load config
-$config_file = balp_project_root() . '/config/config.php';
-$CONFIG = []; if (file_exists($config_file)) $CONFIG = include $config_file;
+require_once balp_project_root() . '/helpers.php';
 
 try {
   // --- Auth ---
-  $JWT_SECRET = $CONFIG['auth']['jwt_secret']
-    ?? ($CONFIG['jwt_secret'] ?? (getenv('BALP_JWT_SECRET') ?: 'change_this_secret'));
+  $config = cfg();
+  $authConfig = $config['auth'] ?? [];
+  $JWT_SECRET = $authConfig['jwt_secret']
+    ?? ($config['jwt_secret'] ?? (getenv('BALP_JWT_SECRET') ?: 'change_this_secret'));
   $token = balp_get_bearer_token();
   if (!$token) { http_response_code(401); echo json_encode(balp_to_utf8(['error'=>'missing token']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE); exit; }
-  jwt_decode($token, $JWT_SECRET, true);
+  try { jwt_decode($token, $JWT_SECRET, true); } catch (Throwable $e) { error_log($e->getMessage()); http_response_code(401); echo json_encode(balp_to_utf8(['error'=>'Nastala chyba.']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE); exit; }
 
   // --- DB connect ---
-  $db_dsn  = $CONFIG['db_dsn']  ?? getenv('BALP_DB_DSN');
-  $db_user = $CONFIG['db_user'] ?? getenv('BALP_DB_USER');
-  $db_pass = $CONFIG['db_pass'] ?? getenv('BALP_DB_PASS');
-  if (!$db_dsn) throw new RuntimeException('Missing DB DSN');
-
-  $options = balp_utf8_pdo_options() + [
-    // Důležité pro "LIMIT :limit" na některých verzích MySQL/MariaDB
-    PDO::ATTR_EMULATE_PREPARES   => true,
-  ];
-  $pdo = new PDO($db_dsn, $db_user, $db_pass, $options);
+  $pdo = db();
+  try { $pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, true); } catch (Throwable $e) {}
 
   // Prefer UTF-8, ale neřeš kolaci – kolize vyřešíme v dotazu přes CONVERT/LOWER
   try { $pdo->exec('SET NAMES utf8mb4 COLLATE utf8mb4_czech_ci'); } catch (Throwable $e) {}
@@ -81,7 +72,8 @@ try {
   echo json_encode(balp_to_utf8(['items'=>$items]), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
 
 } catch (Throwable $e) {
+  error_log($e->getMessage());
   http_response_code(500);
-  echo json_encode(balp_to_utf8(['error'=>$e->getMessage()]), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+  echo json_encode(balp_to_utf8(['error'=>'Nastala chyba.']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
 }
 
