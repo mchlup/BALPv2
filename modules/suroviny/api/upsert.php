@@ -1,6 +1,7 @@
 <?php
 require_once balp_api_path('auth_helpers.php');
 require_once balp_api_path('jwt_helper.php');
+require_once balp_project_root() . '/helpers.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Content-Language: cs');
@@ -14,22 +15,9 @@ $respond = static function ($data, int $status = 200): void {
     exit;
 };
 
-$configFile = balp_project_root() . '/config/config.php';
-$CONFIG = [];
-if (file_exists($configFile)) {
-    $loaded = require $configFile;
-    if (is_array($loaded)) {
-        $CONFIG = $loaded;
-    } elseif (!is_array($CONFIG) && isset($GLOBALS['CONFIG']) && is_array($GLOBALS['CONFIG'])) {
-        $CONFIG = $GLOBALS['CONFIG'];
-    }
-}
-if (!is_array($CONFIG)) {
-    $CONFIG = [];
-}
-
-$authConf = $CONFIG['auth'] ?? [];
-$jwtSecret = $authConf['jwt_secret'] ?? ($CONFIG['jwt_secret'] ?? (getenv('BALP_JWT_SECRET') ?: 'change_this_secret'));
+$config = cfg();
+$authConf = $config['auth'] ?? [];
+$jwtSecret = $authConf['jwt_secret'] ?? ($config['jwt_secret'] ?? (getenv('BALP_JWT_SECRET') ?: 'change_this_secret'));
 
 $token = balp_get_bearer_token();
 if (!$token) {
@@ -39,7 +27,8 @@ if (!$token) {
 try {
     jwt_decode($token, $jwtSecret, true);
 } catch (Throwable $e) {
-    $respond(['error' => $e->getMessage()], 401);
+    error_log($e->getMessage());
+    $respond(['error' => 'Nastala chyba.'], 401);
 }
 
 $rawBody = file_get_contents('php://input');
@@ -121,13 +110,7 @@ if ($data['pozn'] === null) {
 }
 
 try {
-    $dbDsn = $CONFIG['db_dsn'] ?? getenv('BALP_DB_DSN');
-    $dbUser = $CONFIG['db_user'] ?? getenv('BALP_DB_USER');
-    $dbPass = $CONFIG['db_pass'] ?? getenv('BALP_DB_PASS');
-    if (!$dbDsn) {
-        throw new RuntimeException('DB DSN missing');
-    }
-    $pdo = new PDO($dbDsn, $dbUser, $dbPass, balp_utf8_pdo_options());
+    $pdo = db();
 
     if ($id) {
         $sql = 'UPDATE balp_sur SET cislo = :cislo, nazev = :nazev, sh = :sh, sus_sh = :sus_sh, '
@@ -165,5 +148,6 @@ try {
     $newId = $id ?? (int)$pdo->lastInsertId();
     $respond(['ok' => true, 'id' => $newId]);
 } catch (Throwable $e) {
-    $respond(['error' => $e->getMessage()], 500);
+    error_log($e->getMessage());
+    $respond(['error' => 'Nastala chyba.'], 500);
 }

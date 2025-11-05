@@ -5,6 +5,71 @@ require_once __DIR__ . '/modules/bootstrap.php';
 $c = cfg(); $pdo = db();
 $action = $_GET['action'] ?? '';
 
+function balp_table_get_metadata(PDO $pdo, string $table, bool $forceReload = false): array
+{
+    static $cache = [];
+    global $c;
+    $schema = $c['db']['database'] ?? '';
+    $key = strtolower($schema . '.' . $table);
+    if ($forceReload) {
+        unset($cache[$key]);
+    }
+    if (!isset($cache[$key])) {
+        $columns = [];
+        $primaryKey = [];
+        $textColumns = [];
+        try {
+            $stmt = $pdo->prepare(
+                'SELECT COLUMN_NAME, DATA_TYPE, COLUMN_TYPE, COLUMN_KEY, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, '
+                . 'CHARACTER_MAXIMUM_LENGTH, COLUMN_COMMENT, ORDINAL_POSITION '
+                . 'FROM INFORMATION_SCHEMA.COLUMNS '
+                . 'WHERE TABLE_SCHEMA = :db AND TABLE_NAME = :table '
+                . 'ORDER BY ORDINAL_POSITION'
+            );
+            $stmt->execute([':db' => $schema, ':table' => $table]);
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $columnName = $row['COLUMN_NAME'];
+                $columns[$columnName] = $row;
+                if (($row['COLUMN_KEY'] ?? '') === 'PRI') {
+                    $primaryKey[] = $columnName;
+                }
+                $dataType = strtolower((string)($row['DATA_TYPE'] ?? ''));
+                if (in_array($dataType, ['varchar', 'text', 'char', 'tinytext', 'mediumtext', 'longtext'], true)) {
+                    $textColumns[] = $columnName;
+                }
+            }
+        } catch (Throwable $e) {
+            error_log($e->getMessage());
+            $columns = [];
+            $primaryKey = [];
+            $textColumns = [];
+        }
+
+        $cache[$key] = [
+            'columns' => $columns,
+            'primary_key' => $primaryKey,
+            'text_columns' => $textColumns,
+        ];
+    }
+
+    return $cache[$key];
+}
+
+function balp_table_get_columns(PDO $pdo, string $table, bool $forceReload = false): array
+{
+    return balp_table_get_metadata($pdo, $table, $forceReload)['columns'];
+}
+
+function balp_table_get_primary_key_columns(PDO $pdo, string $table, bool $forceReload = false): array
+{
+    return balp_table_get_metadata($pdo, $table, $forceReload)['primary_key'];
+}
+
+function balp_table_get_text_columns(PDO $pdo, string $table, bool $forceReload = false): array
+{
+    return balp_table_get_metadata($pdo, $table, $forceReload)['text_columns'];
+}
+
 function require_auth(){ if(!has_auth())return; if(!auth_user()) respond_json(['error'=>'Unauthorized'],401); }
 
 if ($action==='_meta_tables'){
@@ -46,12 +111,22 @@ if ($action==='_modules'){
   respond_json(['modules' => $modules]);
 }
 if ($action==='_meta_columns'){
-  $db=$c['db']['database']; $t=$_GET['table'] ?? '';
-  $cs=$pdo->prepare("SELECT COLUMN_NAME name, DATA_TYPE type, COLUMN_TYPE column_type, COLUMN_KEY column_key, IS_NULLABLE is_nullable, COLUMN_DEFAULT default_value, EXTRA extra, CHARACTER_MAXIMUM_LENGTH maxlen, COLUMN_COMMENT comment FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=:db AND TABLE_NAME=:t ORDER BY ORDINAL_POSITION");
-  $cs->execute([':db'=>$db, ':t'=>$t]); $cols=$cs->fetchAll();
-  $pk=$pdo->prepare("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=:db AND TABLE_NAME=:t AND CONSTRAINT_NAME='PRIMARY' ORDER BY ORDINAL_POSITION");
-  $pk->execute([':db'=>$db, ':t'=>$t]); $pks=array_map(fn($r)=>$r['COLUMN_NAME'],$pk->fetchAll());
-  respond_json(['columns'=>$cols,'primaryKey'=>$pks]);
+  $t=$_GET['table'] ?? '';
+  $metadata = balp_table_get_metadata($pdo, $t);
+  $cols = array_map(static function (array $column) {
+    return [
+      'name' => $column['COLUMN_NAME'],
+      'type' => $column['DATA_TYPE'],
+      'column_type' => $column['COLUMN_TYPE'],
+      'column_key' => $column['COLUMN_KEY'],
+      'is_nullable' => $column['IS_NULLABLE'],
+      'default_value' => $column['COLUMN_DEFAULT'],
+      'extra' => $column['EXTRA'],
+      'maxlen' => $column['CHARACTER_MAXIMUM_LENGTH'],
+      'comment' => $column['COLUMN_COMMENT'],
+    ];
+  }, array_values($metadata['columns']));
+  respond_json(['columns'=>$cols,'primaryKey'=>$metadata['primary_key']]);
 }
 
 if ($action==='auth_login'){
@@ -121,9 +196,9 @@ if ($action==='auth_me'){
 if ($action==='list'){
   require_auth(); $t=$_GET['table'] ?? '';
   $limit=max(1,min(1000,(int)($_GET['limit']??100))); $offset=max(0,(int)($_GET['offset']??0)); $q=$_GET['q'] ?? '';
-  $dbn=$c['db']['database'];
-  $tc=$pdo->prepare("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=:d AND TABLE_NAME=:t AND DATA_TYPE IN ('varchar','text','char','mediumtext','longtext')");
-  $tc->execute([':d'=>$dbn, ':t'=>$t]); $textCols=array_map(fn($r)=>$r['COLUMN_NAME'],$tc->fetchAll());
+  $columns = balp_table_get_columns($pdo, $t);
+  if (!$columns) respond_json(['error'=>'Unknown table'],400);
+  $textCols=balp_table_get_text_columns($pdo,$t);
   $qt=str_replace('`','``',$t);
   $sql="SELECT * FROM `{$qt}`"; $params=[];
   if($q && $textCols){ $likes=array_map(fn($c)=>"`".str_replace('`','``',$c)."` LIKE :q",$textCols); $sql.=" WHERE ".implode(' OR ',$likes); $params[':q']="%$q%"; }
@@ -134,16 +209,17 @@ if ($action==='list'){
 }
 if ($action==='detail'){
   require_auth(); $t=$_GET['table'] ?? ''; $id=$_GET['id'] ?? '';
-  $pkq=$pdo->prepare("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=:db AND TABLE_NAME=:t AND CONSTRAINT_NAME='PRIMARY' ORDER BY ORDINAL_POSITION");
-  $pkq->execute([':db'=>$c['db']['database'], ':t'=>$t]); $pks=$pkq->fetchAll(PDO::FETCH_COLUMN); if(count($pks)!==1) respond_json(['error'=>'Unsupported PK'],400);
-  $pk=$pks[0]; $qt=str_replace('`','``',$t); $qpk=str_replace('`','``',$pk);
+  $pkColumns=balp_table_get_primary_key_columns($pdo,$t);
+  if(count($pkColumns)!==1) respond_json(['error'=>'Unsupported PK'],400);
+  $pk=$pkColumns[0]; $qt=str_replace('`','``',$t); $qpk=str_replace('`','``',$pk);
   $st=$pdo->prepare("SELECT * FROM `{$qt}` WHERE `{$qpk}`=:id"); $st->execute([':id'=>$id]);
   $row=$st->fetch(); if(!$row) respond_json(['error'=>'Not found'],404); respond_json($row);
 }
 if ($action==='create'){
   require_auth(); $t=$_GET['table'] ?? ''; $b=request_json();
-  $cs=$pdo->prepare("SELECT COLUMN_NAME, EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=:db AND TABLE_NAME=:t"); $cs->execute([':db'=>$c['db']['database'], ':t'=>$t]);
-  $all=$cs->fetchAll(); $ins=[]; foreach($all as $col){ if(strpos($col['EXTRA'],'auto_increment')===false) $ins[]=$col['COLUMN_NAME']; }
+  $columns = balp_table_get_columns($pdo, $t);
+  if(!$columns) respond_json(['error'=>'Unknown table'],400);
+  $ins=[]; foreach($columns as $col){ if(stripos((string)($col['EXTRA'] ?? ''),'auto_increment')===false) $ins[]=$col['COLUMN_NAME']; }
   $fields=array_values(array_intersect(array_keys($b), $ins)); if(!$fields) respond_json(['error'=>'No insertable fields'],400);
   $place = implode(',', array_map(fn($f)=>":$f",$fields)); $cols='`'.implode('`,`', array_map(fn($f)=>str_replace('`','``',$f), $fields)).'`';
   $qt=str_replace('`','``',$t);
@@ -152,10 +228,12 @@ if ($action==='create'){
 }
 if ($action==='update'){
   require_auth(); $t=$_GET['table'] ?? ''; $id=$_GET['id'] ?? ''; $b=request_json();
-  $pkq=$pdo->prepare("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=:db AND TABLE_NAME=:t AND CONSTRAINT_NAME='PRIMARY' ORDER BY ORDINAL_POSITION");
-  $pkq->execute([':db'=>$c['db']['database'], ':t'=>$t]); $pks=$pkq->fetchAll(PDO::FETCH_COLUMN); if(count($pks)!==1) respond_json(['error'=>'Unsupported PK'],400);
-  $pk=$pks[0]; $cs=$pdo->prepare("SELECT COLUMN_NAME, EXTRA FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=:db AND TABLE_NAME=:t"); $cs->execute([':db'=>$c['db']['database'], ':t'=>$t]);
-  $all=$cs->fetchAll(); $ups=[]; foreach($all as $col){ if(strpos($col['EXTRA'],'auto_increment')===false) $ups[]=$col['COLUMN_NAME']; }
+  $pkColumns=balp_table_get_primary_key_columns($pdo,$t);
+  if(count($pkColumns)!==1) respond_json(['error'=>'Unsupported PK'],400);
+  $pk=$pkColumns[0];
+  $columns = balp_table_get_columns($pdo,$t);
+  if(!$columns) respond_json(['error'=>'Unknown table'],400);
+  $ups=[]; foreach($columns as $col){ if(stripos((string)($col['EXTRA'] ?? ''),'auto_increment')===false) $ups[]=$col['COLUMN_NAME']; }
   $fields=array_values(array_intersect(array_keys($b), $ups)); if(!$fields) respond_json(['error'=>'No updatable fields'],400);
   $assign = implode(',', array_map(fn($f)=>'`'.str_replace('`','``',$f)."`=:$f",$fields));
   $qt=str_replace('`','``',$t); $qpk=str_replace('`','``',$pk);
@@ -164,9 +242,9 @@ if ($action==='update'){
 }
 if ($action==='delete'){
   require_auth(); $t=$_GET['table'] ?? ''; $id=$_GET['id'] ?? '';
-  $pkq=$pdo->prepare("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=:db AND TABLE_NAME=:t AND CONSTRAINT_NAME='PRIMARY' ORDER BY ORDINAL_POSITION");
-  $pkq->execute([':db'=>$c['db']['database'], ':t'=>$t]); $pks=$pkq->fetchAll(PDO::FETCH_COLUMN); if(count($pks)!==1) respond_json(['error'=>'Unsupported PK'],400);
-  $pk=$pks[0]; $qt=str_replace('`','``',$t); $qpk=str_replace('`','``',$pk);
+  $pkColumns=balp_table_get_primary_key_columns($pdo,$t);
+  if(count($pkColumns)!==1) respond_json(['error'=>'Unsupported PK'],400);
+  $pk=$pkColumns[0]; $qt=str_replace('`','``',$t); $qpk=str_replace('`','``',$pk);
   $st=$pdo->prepare("DELETE FROM `{$qt}` WHERE `{$qpk}`=:id"); $st->execute([':id'=>$id]); respond_json(['deleted'=>$st->rowCount()>0]);
 }
 

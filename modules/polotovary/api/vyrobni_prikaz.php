@@ -12,24 +12,19 @@ header('Content-Language: cs');
 
 require_once balp_api_path('auth_helpers.php');
 require_once balp_api_path('jwt_helper.php');
-
-$config_file = balp_project_root() . '/config/config.php';
-$CONFIG = [];
-if (file_exists($config_file)) { require $config_file; }
+require_once balp_project_root() . '/helpers.php';
 
 try {
-  $JWT_SECRET = $CONFIG['auth']['jwt_secret']
-    ?? ($CONFIG['jwt_secret'] ?? (getenv('BALP_JWT_SECRET') ?: 'change_this_secret'));
+  $config = cfg();
+  $authConfig = $config['auth'] ?? [];
+  $JWT_SECRET = $authConfig['jwt_secret']
+    ?? ($config['jwt_secret'] ?? (getenv('BALP_JWT_SECRET') ?: 'change_this_secret'));
   $token = balp_get_bearer_token();
   if (!$token) { http_response_code(401); echo json_encode(balp_to_utf8(['error'=>'missing token']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE); exit; }
-  jwt_decode($token, $JWT_SECRET, true);
+  try { jwt_decode($token, $JWT_SECRET, true); } catch (Throwable $e) { error_log($e->getMessage()); http_response_code(401); echo json_encode(balp_to_utf8(['error'=>'Nastala chyba.']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE); exit; }
 
   // DB
-  $db_dsn  = $CONFIG['db_dsn']  ?? getenv('BALP_DB_DSN');
-  $db_user = $CONFIG['db_user'] ?? getenv('BALP_DB_USER');
-  $db_pass = $CONFIG['db_pass'] ?? getenv('BALP_DB_PASS');
-  if (!$db_dsn) throw new Exception('DB DSN missing');
-  $pdo = new PDO($db_dsn, $db_user, $db_pass, balp_utf8_pdo_options());
+  $pdo = db();
 
   $id  = isset($_GET['id']) ? (int)$_GET['id'] : 0;
   $mno = isset($_GET['mnozstvi_kg']) ? (float)$_GET['mnozstvi_kg'] : 1.0;
@@ -98,7 +93,8 @@ try {
     'polotovary'  => $pol,
   ]), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
 } catch (Throwable $e) {
+  error_log($e->getMessage());
   http_response_code(500);
-  echo json_encode(balp_to_utf8(['error'=>$e->getMessage()]), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+  echo json_encode(balp_to_utf8(['error'=>'Nastala chyba.']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
 }
 
