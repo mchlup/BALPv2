@@ -306,31 +306,34 @@ if (!function_exists('balp_ral_normalize_row')) {
     $name = is_string($name) ? trim($name) : $name;
     if (is_string($name) && $name !== '') {
         if (function_exists('balp_to_utf8')) {
-            // pokud projekt má vlastní helper, použijeme ho
-            $name = balp_to_utf8($name);
-        } else {
-            // 1) je to už validní UTF-8? pokud ano, necháme být
-            $isUtf8 = mb_check_encoding($name, 'UTF-8');
+            // pokud projekt má vlastní helper, použijeme ho jako první krok
+            $converted = balp_to_utf8($name);
+            if (is_string($converted)) {
+                $name = $converted;
+            }
+        }
 
-            if (!$isUtf8) {
-                // 2) není to UTF-8 -> convert z CP1250 (fallback ISO-8859-2)
-                $converted = @iconv('Windows-1250', 'UTF-8//IGNORE', $name);
-                if ($converted === false || $converted === '' ) {
-                    $converted = @iconv('ISO-8859-2', 'UTF-8//IGNORE', $name);
-                }
-                if ($converted !== false && $converted !== '') {
-                    $name = $converted;
-                }
-            } else {
-                // 3) je to sice UTF-8, ale může to být mojibake (např. Ĺľ, Ä›, Å™ ...)
-                // pokud detekujeme typické znaky, zkusíme round-trip opravu
-                if (preg_match('/[ĹĚÄÅÖÜÂÂÃÄŹŻŠŤŘČĎŇĽĺľťďňěščřžýáíéóúůÄ›Å™]/u', $name)) {
-                    $rt = @iconv('UTF-8', 'Windows-1250//IGNORE', $name);
+        // 1) je to už validní UTF-8? pokud ano, necháme být
+        $isUtf8 = mb_check_encoding($name, 'UTF-8');
+
+        if (!$isUtf8) {
+            // 2) není to UTF-8 -> convert z CP1250 (fallback ISO-8859-2)
+            $converted = @iconv('Windows-1250', 'UTF-8//IGNORE', $name);
+            if ($converted === false || $converted === '') {
+                $converted = @iconv('ISO-8859-2', 'UTF-8//IGNORE', $name);
+            }
+            if ($converted !== false && $converted !== '') {
+                $name = $converted;
+            }
+        } else {
+            // 3) je to sice UTF-8, ale může to být mojibake (např. Ĺľ, Ä›, Å™ ...)
+            // pokud detekujeme typické znaky, zkusíme round-trip opravu
+            if (preg_match('/[ĹĚÄÅÖÜÂÂÃÄŹŻŠŤŘČĎŇĽĺľťďňěščřžýáíéóúůÄ›Å™]/u', $name)) {
+                $rt = @iconv('UTF-8', 'Windows-1250//IGNORE', $name);
+                if ($rt !== false && $rt !== '') {
+                    $rt = @iconv('Windows-1250', 'UTF-8//IGNORE', $rt);
                     if ($rt !== false && $rt !== '') {
-                        $rt = @iconv('Windows-1250', 'UTF-8//IGNORE', $rt);
-                        if ($rt !== false && $rt !== '') {
-                            $name = $rt;
-                        }
+                        $name = $rt;
                     }
                 }
             }
