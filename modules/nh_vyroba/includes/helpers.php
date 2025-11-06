@@ -296,6 +296,61 @@ if (!function_exists('nh_vyr_ral_fk')) {
     }
 }
 
+if (!function_exists('nh_vyr_ral_text_column')) {
+    function nh_vyr_ral_text_column(PDO $pdo): ?string
+    {
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache;
+        }
+
+        $cache = nh_vyr_resolve_column(
+            $pdo,
+            nh_vyr_table_name(),
+            ['ral_text', 'ral', 'raloznaceni', 'odstin_ral', 'ral_label', 'ral_popis']
+        );
+
+        return $cache;
+    }
+}
+
+if (!function_exists('nh_vyr_vyr_shade_fk')) {
+    function nh_vyr_vyr_shade_fk(PDO $pdo): ?string
+    {
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache;
+        }
+
+        $cache = nh_vyr_resolve_column($pdo, nh_vyr_table_name(), ['idnhods', 'id_nhods', 'nhods_id', 'idnhod']);
+        return $cache;
+    }
+}
+
+if (!function_exists('nh_vyr_code_column')) {
+    function nh_vyr_code_column(PDO $pdo): ?string
+    {
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache;
+        }
+
+        $cache = nh_vyr_resolve_column($pdo, nh_vyr_table_name(), ['cislo_nhods', 'cislo_nh', 'cislo_shade']);
+        if ($cache === null) {
+            $vpColumn = nh_vyr_vp_column($pdo);
+            if ($vpColumn !== null && strcasecmp($vpColumn, 'cislo') !== 0) {
+                $fallbackColumns = ['cislo'];
+                $cache = nh_vyr_resolve_column($pdo, nh_vyr_table_name(), $fallbackColumns);
+                if ($cache !== null && strcasecmp($cache, $vpColumn) === 0) {
+                    $cache = null;
+                }
+            }
+        }
+
+        return $cache;
+    }
+}
+
 if (!function_exists('nh_vyr_shade_table_name')) {
     function nh_vyr_shade_table_name(): string
     {
@@ -311,6 +366,45 @@ if (!function_exists('nh_vyr_shade_nh_fk')) {
             return $cache;
         }
         $cache = nh_vyr_resolve_column($pdo, nh_vyr_shade_table_name(), ['idnh', 'id_nh', 'idmaster', 'id_nhmaster']);
+        return $cache;
+    }
+}
+
+if (!function_exists('nh_vyr_shade_ral_fk')) {
+    function nh_vyr_shade_ral_fk(PDO $pdo): ?string
+    {
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache;
+        }
+
+        $cache = nh_vyr_resolve_column($pdo, nh_vyr_shade_table_name(), ['idral', 'id_ral', 'ral_id', 'idralbarva', 'idbarva', 'id_barva']);
+        return $cache;
+    }
+}
+
+if (!function_exists('nh_vyr_shade_valid_from_column')) {
+    function nh_vyr_shade_valid_from_column(PDO $pdo): ?string
+    {
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache;
+        }
+
+        $cache = nh_vyr_resolve_column($pdo, nh_vyr_shade_table_name(), ['dtod', 'platnost_od', 'valid_from', 'datum_od']);
+        return $cache;
+    }
+}
+
+if (!function_exists('nh_vyr_shade_valid_to_column')) {
+    function nh_vyr_shade_valid_to_column(PDO $pdo): ?string
+    {
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache;
+        }
+
+        $cache = nh_vyr_resolve_column($pdo, nh_vyr_shade_table_name(), ['dtdo', 'platnost_do', 'valid_to', 'datum_do']);
         return $cache;
     }
 }
@@ -375,6 +469,7 @@ if (!function_exists('nh_vyr_fetch_shade')) {
         $nhTable = sql_quote_ident(balp_nh_table_name());
         $nhAlias = 'nh';
         $nhFk = nh_vyr_shade_nh_fk($pdo);
+        $ralFk = nh_vyr_shade_ral_fk($pdo);
         $codeCol = nh_vyr_shade_code_column($pdo);
         $variantCol = nh_vyr_shade_variant_column($pdo);
         $nhCodeCol = nh_vyr_shade_nh_code_column($pdo);
@@ -386,9 +481,17 @@ if (!function_exists('nh_vyr_fetch_shade')) {
             $variantCol ? "$alias." . sql_quote_ident($variantCol) . ' AS shade_cislo_ods' : 'NULL AS shade_cislo_ods',
             $nhCodeCol ? "$alias." . sql_quote_ident($nhCodeCol) . ' AS shade_cislo_nh' : 'NULL AS shade_cislo_nh',
             $nameCol ? "$alias." . sql_quote_ident($nameCol) . ' AS shade_nazev' : 'NULL AS shade_nazev',
-            "$nhAlias." . sql_quote_ident('cislo') . ' AS nh_cislo',
-            "$nhAlias." . sql_quote_ident('nazev') . ' AS nh_nazev',
+            $nhFk ? "$alias." . sql_quote_ident($nhFk) . ' AS shade_nh_id' : 'NULL AS shade_nh_id',
         ];
+
+        if ($ralFk) {
+            $select[] = "$alias." . sql_quote_ident($ralFk) . ' AS shade_ral_id';
+        } else {
+            $select[] = 'NULL AS shade_ral_id';
+        }
+
+        $select[] = "$nhAlias." . sql_quote_ident('cislo') . ' AS nh_cislo';
+        $select[] = "$nhAlias." . sql_quote_ident('nazev') . ' AS nh_nazev';
 
         $join = '';
         if ($nhFk !== null) {
@@ -413,9 +516,97 @@ if (!function_exists('nh_vyr_fetch_shade')) {
             'cislo_nh' => nh_vyr_first_value($row, ['shade_cislo_nh', 'nh_cislo']),
             'cislo_ods' => nh_vyr_first_value($row, ['shade_cislo_ods']),
             'nazev' => nh_vyr_first_value($row, ['shade_nazev', 'nh_nazev']),
+            'nh_id' => null,
+            'ral_id' => null,
         ];
 
+        if (array_key_exists('shade_nh_id', $row) && $row['shade_nh_id'] !== null) {
+            $nhId = (int)$row['shade_nh_id'];
+            $result['nh_id'] = $nhId > 0 ? $nhId : null;
+        }
+        if (array_key_exists('shade_ral_id', $row) && $row['shade_ral_id'] !== null) {
+            $ralId = (int)$row['shade_ral_id'];
+            $result['ral_id'] = $ralId > 0 ? $ralId : null;
+        }
+
         return $result;
+    }
+}
+
+if (!function_exists('nh_vyr_find_shade_id')) {
+    function nh_vyr_find_shade_id(PDO $pdo, int $nhId, ?int $ralId = null): ?int
+    {
+        if ($nhId <= 0) {
+            return null;
+        }
+
+        $table = sql_quote_ident(nh_vyr_shade_table_name());
+        $alias = 'ods';
+        $nhFk = nh_vyr_shade_nh_fk($pdo);
+        $ralFk = nh_vyr_shade_ral_fk($pdo);
+        if ($nhFk === null) {
+            return null;
+        }
+
+        $conditions = ["$alias." . sql_quote_ident($nhFk) . ' = :nh_id'];
+        $params = [':nh_id' => $nhId];
+
+        if ($ralId !== null) {
+            if ($ralFk === null) {
+                return null;
+            }
+            $conditions[] = "$alias." . sql_quote_ident($ralFk) . ' = :ral_id';
+            $params[':ral_id'] = $ralId;
+        }
+
+        $validFrom = nh_vyr_shade_valid_from_column($pdo);
+        if ($validFrom !== null) {
+            $col = "$alias." . sql_quote_ident($validFrom);
+            $conditions[] = "($col IS NULL OR $col <= CURRENT_DATE())";
+        }
+
+        $validTo = nh_vyr_shade_valid_to_column($pdo);
+        if ($validTo !== null) {
+            $col = "$alias." . sql_quote_ident($validTo);
+            $conditions[] = "($col IS NULL OR $col >= CURRENT_DATE())";
+        }
+
+        $orderParts = [];
+        if ($validTo !== null) {
+            $col = "$alias." . sql_quote_ident($validTo);
+            $orderParts[] = "CASE WHEN ($col IS NULL OR $col >= CURRENT_DATE()) THEN 0 ELSE 1 END";
+            $orderParts[] = "COALESCE($col, '9999-12-31')";
+        }
+        if ($validFrom !== null) {
+            $col = "$alias." . sql_quote_ident($validFrom);
+            $orderParts[] = "COALESCE($col, '0000-01-01')";
+        }
+        $orderParts[] = "$alias." . sql_quote_ident('id') . ' DESC';
+
+        $sql = 'SELECT ' . "$alias." . sql_quote_ident('id') . ' AS id'
+            . " FROM $table AS $alias"
+            . ' WHERE ' . implode(' AND ', $conditions)
+            . ' ORDER BY ' . implode(', ', $orderParts)
+            . ' LIMIT 1';
+
+        $stmt = $pdo->prepare($sql);
+        foreach ($params as $key => $value) {
+            if ($value === null) {
+                $stmt->bindValue($key, null, PDO::PARAM_NULL);
+            } elseif (is_int($value)) {
+                $stmt->bindValue($key, $value, PDO::PARAM_INT);
+            } else {
+                $stmt->bindValue($key, $value, PDO::PARAM_STR);
+            }
+        }
+
+        $stmt->execute();
+        $id = $stmt->fetchColumn();
+        if ($id === false || $id === null) {
+            return null;
+        }
+
+        return (int)$id;
     }
 }
 
@@ -435,6 +626,7 @@ if (!function_exists('nh_vyr_fetch_shade_by_nh_id')) {
             return null;
         }
 
+        $ralFk = nh_vyr_shade_ral_fk($pdo);
         $codeCol = nh_vyr_shade_code_column($pdo);
         $variantCol = nh_vyr_shade_variant_column($pdo);
         $nhCodeCol = nh_vyr_shade_nh_code_column($pdo);
@@ -446,9 +638,17 @@ if (!function_exists('nh_vyr_fetch_shade_by_nh_id')) {
             $variantCol ? "$alias." . sql_quote_ident($variantCol) . ' AS shade_cislo_ods' : 'NULL AS shade_cislo_ods',
             $nhCodeCol ? "$alias." . sql_quote_ident($nhCodeCol) . ' AS shade_cislo_nh' : 'NULL AS shade_cislo_nh',
             $nameCol ? "$alias." . sql_quote_ident($nameCol) . ' AS shade_nazev' : 'NULL AS shade_nazev',
-            "$nhAlias." . sql_quote_ident('cislo') . ' AS nh_cislo',
-            "$nhAlias." . sql_quote_ident('nazev') . ' AS nh_nazev',
+            $nhFk ? "$alias." . sql_quote_ident($nhFk) . ' AS shade_nh_id' : 'NULL AS shade_nh_id',
         ];
+
+        if ($ralFk) {
+            $select[] = "$alias." . sql_quote_ident($ralFk) . ' AS shade_ral_id';
+        } else {
+            $select[] = 'NULL AS shade_ral_id';
+        }
+
+        $select[] = "$nhAlias." . sql_quote_ident('cislo') . ' AS nh_cislo';
+        $select[] = "$nhAlias." . sql_quote_ident('nazev') . ' AS nh_nazev';
 
         $join = "LEFT JOIN $nhTable AS $nhAlias ON $nhAlias.id = $alias." . sql_quote_ident($nhFk);
 
@@ -465,13 +665,26 @@ if (!function_exists('nh_vyr_fetch_shade_by_nh_id')) {
             return null;
         }
 
-        return [
+        $result = [
             'id' => (int)($row['id'] ?? 0),
             'cislo' => nh_vyr_first_value($row, ['shade_cislo']),
             'cislo_nh' => nh_vyr_first_value($row, ['shade_cislo_nh', 'nh_cislo']),
             'cislo_ods' => nh_vyr_first_value($row, ['shade_cislo_ods']),
             'nazev' => nh_vyr_first_value($row, ['shade_nazev', 'nh_nazev']),
+            'nh_id' => null,
+            'ral_id' => null,
         ];
+
+        if (array_key_exists('shade_nh_id', $row) && $row['shade_nh_id'] !== null) {
+            $nhIdValue = (int)$row['shade_nh_id'];
+            $result['nh_id'] = $nhIdValue > 0 ? $nhIdValue : null;
+        }
+        if (array_key_exists('shade_ral_id', $row) && $row['shade_ral_id'] !== null) {
+            $ralIdValue = (int)$row['shade_ral_id'];
+            $result['ral_id'] = $ralIdValue > 0 ? $ralIdValue : null;
+        }
+
+        return $result;
     }
 }
 
@@ -762,6 +975,7 @@ if (!function_exists('nh_vyr_fetch_detail')) {
         $dateColumn = nh_vyr_date_column($pdo);
         $qtyColumn = nh_vyr_qty_column($pdo);
         $noteColumn = nh_vyr_note_column($pdo);
+        $ralTextColumn = nh_vyr_ral_text_column($pdo);
 
         $selectParts = [
             'v.id',
@@ -773,6 +987,7 @@ if (!function_exists('nh_vyr_fetch_detail')) {
         $selectParts[] = $dateColumn ? nh_vyr_column_ref('v', $dateColumn) . ' AS datum_vyroby_raw' : 'NULL AS datum_vyroby_raw';
         $selectParts[] = $qtyColumn ? nh_vyr_column_ref('v', $qtyColumn) . ' AS vyrobit_g_raw' : 'NULL AS vyrobit_g_raw';
         $selectParts[] = $noteColumn ? nh_vyr_column_ref('v', $noteColumn) . ' AS poznamka_raw' : 'NULL AS poznamka_raw';
+        $selectParts[] = $ralTextColumn ? nh_vyr_column_ref('v', $ralTextColumn) . ' AS ral_text_raw' : 'NULL AS ral_text_raw';
         if (nh_vyr_table_has_column($pdo, nh_vyr_table_name(), 'techpor')) {
             $selectParts[] = nh_vyr_column_ref('v', 'techpor') . ' AS techpor';
         }
@@ -1056,6 +1271,17 @@ if (!function_exists('nh_vyr_normalize_header_row')) {
             }
         }
 
+        $ralTextRaw = nh_vyr_first_value($row, ['ral_text_raw', 'ral_text']);
+        if (is_string($ralTextRaw)) {
+            $ralTextRaw = trim($ralTextRaw);
+            if ($ralTextRaw === '') {
+                $ralTextRaw = null;
+            }
+        } else {
+            $ralTextRaw = null;
+        }
+        $result['ral_text'] = $ralTextRaw;
+
         $ralCode = nh_vyr_first_value($row, ['ral_cislo']);
         if (is_string($ralCode)) {
             $ralCode = trim($ralCode);
@@ -1063,7 +1289,7 @@ if (!function_exists('nh_vyr_normalize_header_row')) {
                 $ralCode = null;
             }
         }
-        $result['ral_cislo'] = $ralCode;
+        $result['ral_cislo'] = $ralCode ?? $ralTextRaw;
 
         $ralName = nh_vyr_first_value($row, ['ral_nazev']);
         if (is_string($ralName)) {
@@ -1090,7 +1316,7 @@ if (!function_exists('nh_vyr_normalize_header_row')) {
         $result['ral_color'] = $ralHex ?? $ralRgbNormalized['css'];
 
         unset($result['cislo_vp_raw'], $result['datum_vyroby_raw'], $result['vyrobit_g_raw'], $result['poznamka_raw']);
-        unset($result['ral_id_raw'], $result['ral_rgb_r'], $result['ral_rgb_g'], $result['ral_rgb_b']);
+        unset($result['ral_id_raw'], $result['ral_text_raw'], $result['ral_rgb_r'], $result['ral_rgb_g'], $result['ral_rgb_b']);
 
         return $result;
     }

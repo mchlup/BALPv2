@@ -230,7 +230,7 @@
 
   function buildRalLabel(item) {
     if (!item) return '';
-    const code = item.ral_cislo ?? item.cislo ?? '';
+    const code = item.ral_cislo ?? item.ral_text ?? item.cislo ?? '';
     const name = item.ral_nazev ?? item.nazev ?? '';
     const parts = [code, name].filter(Boolean);
     if (parts.length) return parts.join(' – ');
