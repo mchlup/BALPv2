@@ -147,6 +147,7 @@ try {
     if ($cisloVp === '') {
         throw new NhVyrobaValidationException('Číslo výrobního příkazu je prázdné.');
     }
+    $datumVyroby = $parsedDate->format('Y-m-d');
 
     $shade = null;
 
