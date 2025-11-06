@@ -51,7 +51,12 @@ try {
     ];
 
     foreach ($tables as $table => $condition) {
-        $sql = "UPDATE $table SET dtdo = :now WHERE $condition AND dtod < :now AND dtdo > :now";
+        $sql = "UPDATE $table
+            SET dtod = CASE WHEN dtod IS NULL OR dtod > :now THEN :now ELSE dtod END,
+                dtdo = :now
+            WHERE $condition
+                AND (dtod IS NULL OR dtod <= :now)
+                AND (dtdo IS NULL OR dtdo >= :now)";
         $stmt = $pdo->prepare($sql);
         $stmt->bindValue(':now', $now);
         $stmt->bindValue(':id', $id, PDO::PARAM_INT);
