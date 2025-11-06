@@ -226,8 +226,19 @@ try {
     if (isset($shade['nh_id']) && $shade['nh_id']) {
         $nhId = (int) $shade['nh_id'];
     }
-    if ($idRal === null && isset($shade['ral_id']) && $shade['ral_id']) {
-        $idRal = (int) $shade['ral_id'];
+
+    $shadeRalId = null;
+    if (isset($shade['ral_id']) && $shade['ral_id']) {
+        $shadeRalId = (int) $shade['ral_id'];
+    }
+
+    if ($idRal !== null) {
+        $idRal = (int) $idRal;
+        if ($shadeRalId === null || $shadeRalId !== $idRal) {
+            throw new NhVyrobaValidationException('Vybraný RAL neodpovídá odstínu nátěrové hmoty.');
+        }
+    } elseif ($shadeRalId !== null) {
+        $idRal = $shadeRalId;
     }
 
     if ($cisloNh === null || $cisloNh === '') {
