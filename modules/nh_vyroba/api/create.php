@@ -147,6 +147,36 @@ try {
     if ($cisloVp === '') {
         throw new NhVyrobaValidationException('Číslo výrobního příkazu je prázdné.');
     }
+    $datumVyroby = $parsedDate->format('Y-m-d');
+
+    $shade = null;
+
+    if ($idNhOds !== null) {
+        $shade = nh_vyr_fetch_shade($pdo, $idNhOds);
+        if ($shade && isset($shade['nh_id']) && $shade['nh_id']) {
+            $nhId = (int) $shade['nh_id'];
+        }
+        if ($shade && $idRal === null && isset($shade['ral_id']) && $shade['ral_id']) {
+            $idRal = (int) $shade['ral_id'];
+        }
+        if ($shade === null) {
+            throw new NhVyrobaValidationException('Zvolený odstín nátěrové hmoty neexistuje.');
+        }
+    }
+
+    if ($idNhOds === null && $nhId !== null) {
+        $candidateShade = nh_vyr_fetch_shade($pdo, $nhId);
+        if ($candidateShade) {
+            $shade = $candidateShade;
+            $idNhOds = (int) $candidateShade['id'];
+            if (isset($candidateShade['nh_id']) && $candidateShade['nh_id']) {
+                $nhId = (int) $candidateShade['nh_id'];
+            }
+            if ($idRal === null && isset($candidateShade['ral_id']) && $candidateShade['ral_id']) {
+                $idRal = (int) $candidateShade['ral_id'];
+            }
+        }
+    }
 
     if ($idNhOds === null) {
         if ($nhId === null && $cisloNh !== null && $cisloNh !== '') {
@@ -168,15 +198,36 @@ try {
         }
 
         $foundShadeId = nh_vyr_find_shade_id($pdo, $nhId, $idRal);
+        if ($foundShadeId === null && $idRal !== null) {
+            $foundShadeId = nh_vyr_find_shade_id($pdo, $nhId, null);
+        }
+        if ($foundShadeId === null) {
+            $fallbackShade = nh_vyr_fetch_shade_by_nh_id($pdo, $nhId);
+            if ($fallbackShade) {
+                $shade = $fallbackShade;
+                $foundShadeId = (int) $fallbackShade['id'];
+                if ($idRal === null && isset($fallbackShade['ral_id']) && $fallbackShade['ral_id']) {
+                    $idRal = (int) $fallbackShade['ral_id'];
+                }
+            }
+        }
         if ($foundShadeId === null) {
             throw new NhVyrobaValidationException('Nepodařilo se najít odstín nátěrové hmoty (idnhods).');
         }
         $idNhOds = $foundShadeId;
     }
 
-    $shade = nh_vyr_fetch_shade($pdo, $idNhOds);
+    if ($shade === null) {
+        $shade = nh_vyr_fetch_shade($pdo, $idNhOds);
+    }
     if (!$shade) {
         throw new NhVyrobaValidationException('Zvolený odstín nátěrové hmoty neexistuje.');
+    }
+    if (isset($shade['nh_id']) && $shade['nh_id']) {
+        $nhId = (int) $shade['nh_id'];
+    }
+    if ($idRal === null && isset($shade['ral_id']) && $shade['ral_id']) {
+        $idRal = (int) $shade['ral_id'];
     }
 
     if ($cisloNh === null || $cisloNh === '') {

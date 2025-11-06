@@ -28,6 +28,7 @@ try {
     $dateColumn = nh_vyr_date_column($pdo);
     $qtyColumn = nh_vyr_qty_column($pdo);
     $noteColumn = nh_vyr_note_column($pdo);
+    $ralTextColumn = nh_vyr_ral_text_column($pdo);
     $digitsExpr = nh_vyr_digits_expr($pdo, 'v');
 
     $limit = max(1, min(200, (int)($_GET['limit'] ?? 50)));
@@ -129,6 +130,7 @@ try {
     $dateSelect = $dateColumn ? nh_vyr_column_ref($alias, $dateColumn) . ' AS datum_vyroby_raw' : 'NULL AS datum_vyroby_raw';
     $qtySelect = $qtyColumn ? nh_vyr_column_ref($alias, $qtyColumn) . ' AS vyrobit_g_raw' : 'NULL AS vyrobit_g_raw';
     $noteSelect = $noteColumn ? nh_vyr_column_ref($alias, $noteColumn) . ' AS poznamka_raw' : 'NULL AS poznamka_raw';
+    $ralTextSelect = $ralTextColumn ? nh_vyr_column_ref($alias, $ralTextColumn) . ' AS ral_text_raw' : 'NULL AS ral_text_raw';
 
     $selectParts = [
         'v.id',
@@ -136,6 +138,7 @@ try {
         $dateSelect,
         $qtySelect,
         $noteSelect,
+        $ralTextSelect,
         'v.' . sql_quote_ident($fkToNh) . ' AS idnh',
         'nh.cislo AS cislo_nh',
         'nh.nazev AS nazev_nh',
