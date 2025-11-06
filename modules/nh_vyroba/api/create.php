@@ -198,7 +198,10 @@ try {
         }
 
         $foundShadeId = nh_vyr_find_shade_id($pdo, $nhId, $idRal);
-        if ($foundShadeId === null && $idRal !== null) {
+        if ($foundShadeId === null) {
+            if ($idRal !== null) {
+                throw new NhVyrobaValidationException('Zadaný RAL neodpovídá odstínu nátěrové hmoty.');
+            }
             $foundShadeId = nh_vyr_find_shade_id($pdo, $nhId, null);
         }
         if ($foundShadeId === null) {
