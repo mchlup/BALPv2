@@ -166,10 +166,67 @@ if (!function_exists('nh_vyr_digits_expr')) {
     }
 }
 
+if (!function_exists('nh_vyr_table_exists')) {
+    function nh_vyr_table_exists(PDO $pdo, string $table): bool
+    {
+        try {
+            if (function_exists('balp_nh_table_exists')) {
+                return balp_nh_table_exists($pdo, $table);
+            }
+            $pdo->query('SELECT 1 FROM ' . sql_quote_ident($table) . ' LIMIT 0');
+            return true;
+        } catch (Throwable $ignored) {
+            return false;
+        }
+    }
+}
+
 if (!function_exists('nh_vyr_table_name')) {
     function nh_vyr_table_name(): string
     {
-        return 'balp_nhods_vyr';
+        static $resolved = null;
+        if ($resolved !== null) {
+            return $resolved;
+        }
+
+        $config = cfg();
+        $candidates = [];
+
+        $configured = $config['tables']['nh_vyr'] ?? $config['tables']['nhods_vyr'] ?? null;
+        if (is_string($configured)) {
+            $configured = trim($configured);
+            if ($configured !== '') {
+                $candidates[] = $configured;
+            }
+        }
+
+        foreach ([
+            'balp_nhods_vyr',
+            'balp_nh_vyr',
+            'balp_nhvyroba',
+            'balp_nh_vyroba',
+        ] as $candidate) {
+            if (!in_array($candidate, $candidates, true)) {
+                $candidates[] = $candidate;
+            }
+        }
+
+        $pdo = null;
+        try {
+            $pdo = db();
+        } catch (Throwable $ignored) {
+            $pdo = null;
+        }
+
+        if ($pdo instanceof PDO) {
+            foreach ($candidates as $candidate) {
+                if (nh_vyr_table_exists($pdo, $candidate)) {
+                    return $resolved = $candidate;
+                }
+            }
+        }
+
+        return $resolved = ($candidates[0] ?? 'balp_nhods_vyr');
     }
 }
 

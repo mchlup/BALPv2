@@ -41,7 +41,7 @@ if (!function_exists('balp_nh_table_name')) {
         }
 
         // prefer known legacy table names
-        foreach (['balp_nhods', 'balp_nh'] as $candidate) {
+        foreach (['balp_nh', 'balp_nhods'] as $candidate) {
             if (!in_array($candidate, $candidates, true)) {
                 $candidates[] = $candidate;
             }
