@@ -180,8 +180,14 @@ if (!function_exists('nh_vyr_vp_column')) {
         if ($cache !== null) {
             return $cache;
         }
-        $column = nh_vyr_resolve_column($pdo, nh_vyr_table_name(), ['cislo_vp', 'cislo', 'cislo_vyr', 'vp_cislo', 'cislovp'], 'cislo_vp');
-        return $cache = $column ?? 'cislo_vp';
+        $column = nh_vyr_resolve_column(
+            $pdo,
+            nh_vyr_table_name(),
+            ['cislo_vp', 'cislo', 'cislo_vyr', 'vp_cislo', 'cislovp'],
+            'cislo_vp',
+            true
+        );
+        return $cache = $column;
     }
 }
 
@@ -192,7 +198,11 @@ if (!function_exists('nh_vyr_date_column')) {
         if ($cache !== null) {
             return $cache;
         }
-        $cache = nh_vyr_resolve_column($pdo, nh_vyr_table_name(), ['datum_vyroby', 'dtvyrprik', 'datum', 'dt_vyroby', 'dtvyroby', 'datum_vyr']);
+        $cache = nh_vyr_resolve_column(
+            $pdo,
+            nh_vyr_table_name(),
+            ['dtvyrprik', 'datum', 'dt_vyroby', 'datum_vyroby', 'datum_vyr', 'dtvyroby']
+        );
         return $cache;
     }
 }
@@ -204,7 +214,11 @@ if (!function_exists('nh_vyr_qty_column')) {
         if ($cache !== null) {
             return $cache;
         }
-        $cache = nh_vyr_resolve_column($pdo, nh_vyr_table_name(), ['vyrobit_g', 'vyrobit', 'mnozstvi', 'mnozstvi_g', 'navazit', 'navazit_g']);
+        $cache = nh_vyr_resolve_column(
+            $pdo,
+            nh_vyr_table_name(),
+            ['vyrobit', 'vyrobit_g', 'mnozstvi', 'mnozstvi_g', 'navazit', 'navazit_g']
+        );
         return $cache;
     }
 }
@@ -244,15 +258,44 @@ if (!function_exists('nh_vyr_table_has_column')) {
 }
 
 if (!function_exists('nh_vyr_resolve_column')) {
-    function nh_vyr_resolve_column(PDO $pdo, string $table, array $candidates, ?string $fallback = null): ?string
-    {
+    function nh_vyr_resolve_column(
+        PDO $pdo,
+        string $table,
+        array $candidates,
+        ?string $fallback = null,
+        bool $required = false
+    ): ?string {
         $columns = balp_table_get_columns($pdo, $table);
         foreach ($candidates as $candidate) {
-            if (isset($columns[strtolower($candidate)])) {
-                return $candidate;
+            $key = strtolower($candidate);
+            if (isset($columns[$key])) {
+                $definition = $columns[$key];
+                return $definition['Field'] ?? $candidate;
             }
         }
-        return $fallback;
+
+        if ($fallback !== null) {
+            $fallbackKey = strtolower($fallback);
+            if (isset($columns[$fallbackKey])) {
+                $definition = $columns[$fallbackKey];
+                return $definition['Field'] ?? $fallback;
+            }
+        }
+
+        if ($required) {
+            $expected = $candidates;
+            if ($fallback !== null && !in_array($fallback, $expected, true)) {
+                $expected[] = $fallback;
+            }
+            $message = sprintf(
+                'Chybí požadovaný sloupec v tabulce %s (očekáván jeden z: %s).',
+                $table,
+                implode(', ', $expected)
+            );
+            throw new RuntimeException($message);
+        }
+
+        return null;
     }
 }
 
@@ -279,8 +322,14 @@ if (!function_exists('nh_vyr_vyr_nh_fk')) {
         if ($cache !== null) {
             return $cache;
         }
-        $column = nh_vyr_resolve_column($pdo, nh_vyr_table_name(), ['idnh', 'id_nh', 'idnhods', 'idnhod', 'idnhmaster']);
-        return $cache = $column ?? 'idnh';
+        $column = nh_vyr_resolve_column(
+            $pdo,
+            nh_vyr_table_name(),
+            ['idnh', 'id_nh', 'idnhmaster'],
+            'idnh',
+            true
+        );
+        return $cache = $column;
     }
 }
 
@@ -335,7 +384,7 @@ if (!function_exists('nh_vyr_code_column')) {
             return $cache;
         }
 
-        $cache = nh_vyr_resolve_column($pdo, nh_vyr_table_name(), ['cislo_nhods', 'cislo_nh', 'cislo_shade']);
+        $cache = nh_vyr_resolve_column($pdo, nh_vyr_table_name(), ['cislo_nhods', 'cislo_nh', 'cislo', 'kod_nh', 'kod_odstinu']);
         if ($cache === null) {
             $vpColumn = nh_vyr_vp_column($pdo);
             if ($vpColumn !== null && strcasecmp($vpColumn, 'cislo') !== 0) {

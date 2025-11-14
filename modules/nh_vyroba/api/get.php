@@ -44,6 +44,9 @@ try {
         'zkousky' => $tests,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
 } catch (Throwable $e) {
-    http_response_code(500);
-    echo json_encode(['error' => $e->getMessage()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+    error_log('[nh_vyroba][get] ' . $e->getMessage());
+    respond_json(
+        ['error' => 'Chyba při načítání detailu výrobního příkazu.'],
+        500
+    );
 }
