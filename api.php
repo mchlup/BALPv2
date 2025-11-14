@@ -2,6 +2,7 @@
 require_once __DIR__ . '/api/api_patch.php';  // přidá action=auth_login, action=auth_me
 require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/modules/bootstrap.php';
+require_once __DIR__ . '/api/jwt_helper.php';
 $c = cfg(); $pdo = db();
 $action = $_GET['action'] ?? '';
 
@@ -184,13 +185,12 @@ if ($action==='auth_login'){
       'samesite' => 'Lax',
   ]);
   respond_json(['token'=>$token,'user'=>['username'=>$login,'role'=>$payload['role']]]);
-
+}
 
 if ($action==='auth_me'){
   $u = auth_user();
   if(!$u) respond_json(['error'=>'Unauthorized'],401);
   respond_json(['ok'=>true,'user'=>$u]);
-}
 }
 
 if ($action==='list'){
