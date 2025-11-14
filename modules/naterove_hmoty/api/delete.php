@@ -39,27 +39,88 @@ try {
 
     $pdo->beginTransaction();
 
-    $nhodsTable = sql_quote_ident('balp_nhods');
+    $nhodsTableName = 'balp_nhods';
+    $nhodsTableQuoted = sql_quote_ident($nhodsTableName);
     $tables = [
-        $nhTable => 'id = :id',
-        $nhodsTable => 'idnh = :id',
-        sql_quote_ident('balp_nhods_ceny') => "idnhods IN (SELECT id FROM $nhodsTable WHERE idnh = :id)",
-        sql_quote_ident('balp_nhods_rec') => "idnhods IN (SELECT id FROM $nhodsTable WHERE idnh = :id)",
-        sql_quote_ident('balp_nhods_vyr') => "idnhods IN (SELECT id FROM $nhodsTable WHERE idnh = :id)",
-        sql_quote_ident('balp_nhods_vyr_rec') => "idnhods IN (SELECT id FROM $nhodsTable WHERE idnh = :id)",
-        sql_quote_ident('balp_nhods_vyr_zk') => "idnhods IN (SELECT id FROM $nhodsTable WHERE idnh = :id)",
+        [
+            'name' => $nhTableName,
+            'condition' => 'id = :id',
+        ],
+        [
+            'name' => $nhodsTableName,
+            'condition' => 'idnh = :id',
+        ],
+        [
+            'name' => 'balp_nhods_ceny',
+            'condition' => "idnhods IN (SELECT id FROM $nhodsTableQuoted WHERE idnh = :id)",
+        ],
+        [
+            'name' => 'balp_nhods_rec',
+            'condition' => "idnhods IN (SELECT id FROM $nhodsTableQuoted WHERE idnh = :id)",
+        ],
+        [
+            'name' => 'balp_nhods_vyr',
+            'condition' => "idnhods IN (SELECT id FROM $nhodsTableQuoted WHERE idnh = :id)",
+        ],
+        [
+            'name' => 'balp_nhods_vyr_rec',
+            'condition' => "idnhods IN (SELECT id FROM $nhodsTableQuoted WHERE idnh = :id)",
+        ],
+        [
+            'name' => 'balp_nhods_vyr_zk',
+            'condition' => "idnhods IN (SELECT id FROM $nhodsTableQuoted WHERE idnh = :id)",
+        ],
     ];
 
-    foreach ($tables as $table => $condition) {
-        $sql = "UPDATE $table
-            SET dtod = CASE WHEN dtod IS NULL OR dtod > :now THEN :now ELSE dtod END,
-                dtdo = :now
-            WHERE $condition
-                AND (dtod IS NULL OR dtod <= :now)
-                AND (dtdo IS NULL OR dtdo >= :now)";
-        $stmt = $pdo->prepare($sql);
-        $stmt->bindValue(':now', $now);
-        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+    foreach ($tables as $tableInfo) {
+        $tableName = $tableInfo['name'];
+        $condition = $tableInfo['condition'];
+        if (!$tableName || !$condition) {
+            continue;
+        }
+
+        $tableQuoted = sql_quote_ident($tableName);
+        $columns = balp_table_get_columns($pdo, $tableName);
+        $hasDtod = isset($columns['dtod']);
+        $hasDtdo = isset($columns['dtdo']);
+
+        if (!$hasDtod && !$hasDtdo) {
+            $sql = "DELETE FROM $tableQuoted WHERE $condition";
+            $stmt = $pdo->prepare($sql);
+        } else {
+            $setParts = [];
+            if ($hasDtod) {
+                $setParts[] = "dtod = CASE WHEN dtod IS NULL OR dtod > :now THEN :now ELSE dtod END";
+            }
+            if ($hasDtdo) {
+                $setParts[] = 'dtdo = :now';
+            }
+
+            if (!$setParts) {
+                continue;
+            }
+
+            $whereParts = [$condition];
+            if ($hasDtod) {
+                $whereParts[] = '(dtod IS NULL OR dtod <= :now)';
+            }
+            if ($hasDtdo) {
+                $whereParts[] = '(dtdo IS NULL OR dtdo >= :now)';
+            }
+
+            $sql = "UPDATE $tableQuoted
+                SET " . implode(",\n                ", $setParts) . "
+                WHERE " . implode("\n                AND ", $whereParts);
+            $stmt = $pdo->prepare($sql);
+            if ($hasDtod || $hasDtdo) {
+                $stmt->bindValue(':now', $now);
+            }
+        }
+
+        if (strpos($condition, ':id') !== false) {
+            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        }
+
         $stmt->execute();
     }
 

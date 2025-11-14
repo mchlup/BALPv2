@@ -287,9 +287,41 @@ if (!function_exists('balp_ral_normalize_rgb_components')) {
     }
 }
 
+if (!function_exists('balp_ral_fix_mojibake')) {
+    function balp_ral_fix_mojibake(string $text): string
+    {
+        if ($text === '') {
+            return $text;
+        }
+
+        static $map = [
+            'Å¾' => 'ž',
+            'Å½' => 'Ž',
+            'Å¡' => 'š',
+            'Å ' => 'Š',
+            'Å¥' => 'ť',
+            'Å¤' => 'Ť',
+            'Äť' => 'ť',
+            'ÄŚ' => 'Ť',
+            'Ĺ¥' => 'ť',
+            'Ĺ¤' => 'Ť',
+        ];
+
+        $needsFix = false;
+        foreach ($map as $bad => $_) {
+            if (strpos($text, $bad) !== false) {
+                $needsFix = true;
+                break;
+            }
+        }
+
+        return $needsFix ? strtr($text, $map) : $text;
+    }
+}
+
 if (!function_exists('balp_ral_normalize_row')) {
     function balp_ral_normalize_row(PDO $pdo, array $row): array
-{
+    {
     $idColumn   = balp_ral_id_column($pdo);
     $codeColumn = balp_ral_code_column($pdo);
     $nameColumn = balp_ral_name_column($pdo);
@@ -352,6 +384,8 @@ if (!function_exists('balp_ral_normalize_row')) {
                 }
             }
         }
+
+        $name = balp_ral_fix_mojibake($name);
     }
     if ($name === '') $name = null;
 
