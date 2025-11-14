@@ -39,48 +39,136 @@ try {
 
     $pdo->beginTransaction();
 
+    $tableExists = static function (PDO $pdo, string $table): bool {
+        try {
+            if (function_exists('balp_nh_table_exists')) {
+                return balp_nh_table_exists($pdo, $table);
+            }
+            $pdo->query('SELECT 1 FROM ' . sql_quote_ident($table) . ' LIMIT 0');
+            return true;
+        } catch (Throwable $e) {
+            return false;
+        }
+    };
+
+    $resolveColumn = static function (array $columns, array $candidates): ?string {
+        foreach ($candidates as $candidate) {
+            $key = strtolower($candidate);
+            if (!isset($columns[$key])) {
+                continue;
+            }
+            $definition = $columns[$key];
+            $field = $definition['Field'] ?? null;
+            if (is_string($field) && $field !== '') {
+                return $field;
+            }
+            return $candidate;
+        }
+        return null;
+    };
+
     $nhodsTableName = 'balp_nhods';
-    $nhodsTableQuoted = sql_quote_ident($nhodsTableName);
-    $tables = [
-        [
-            'name' => $nhTableName,
-            'condition' => 'id = :id',
-        ],
-        [
-            'name' => $nhodsTableName,
-            'condition' => 'idnh = :id',
-        ],
-        [
-            'name' => 'balp_nhods_ceny',
-            'condition' => "idnhods IN (SELECT id FROM $nhodsTableQuoted WHERE idnh = :id)",
-        ],
-        [
-            'name' => 'balp_nhods_rec',
-            'condition' => "idnhods IN (SELECT id FROM $nhodsTableQuoted WHERE idnh = :id)",
-        ],
-        [
-            'name' => 'balp_nhods_vyr',
-            'condition' => "idnhods IN (SELECT id FROM $nhodsTableQuoted WHERE idnh = :id)",
-        ],
-        [
-            'name' => 'balp_nhods_vyr_rec',
-            'condition' => "idnhods IN (SELECT id FROM $nhodsTableQuoted WHERE idnh = :id)",
-        ],
-        [
-            'name' => 'balp_nhods_vyr_zk',
-            'condition' => "idnhods IN (SELECT id FROM $nhodsTableQuoted WHERE idnh = :id)",
-        ],
+    $tables = [];
+
+    $nhColumns = $tableExists($pdo, $nhTableName) ? balp_table_get_columns($pdo, $nhTableName) : [];
+    $tables[] = [
+        'name' => $nhTableName,
+        'columns' => $nhColumns,
+        'condition' => 'id = :id',
+        'params' => [':id' => $id],
+        'types' => [':id' => PDO::PARAM_INT],
     ];
+
+    if ($tableExists($pdo, $nhodsTableName)) {
+        $nhodsColumns = balp_table_get_columns($pdo, $nhodsTableName);
+        $nhodsFkToNh = $resolveColumn($nhodsColumns, ['idnh', 'id_nh', 'idnhmaster', 'idmaster', 'id_nhmaster']);
+        $nhodsIdColumn = $resolveColumn($nhodsColumns, ['id', 'idnhods', 'id_nhods', 'idnhod']);
+
+        if ($nhodsColumns !== [] && $nhodsFkToNh) {
+            $tables[] = [
+                'name' => $nhodsTableName,
+                'columns' => $nhodsColumns,
+                'condition' => sql_quote_ident($nhodsFkToNh) . ' = :id',
+                'params' => [':id' => $id],
+                'types' => [':id' => PDO::PARAM_INT],
+            ];
+        }
+
+        $shadeIds = [];
+        if ($nhodsColumns !== [] && $nhodsFkToNh && $nhodsIdColumn) {
+            $nhodsTableQuoted = sql_quote_ident($nhodsTableName);
+            $selectSql = 'SELECT ' . sql_quote_ident($nhodsIdColumn) . ' FROM ' . $nhodsTableQuoted
+                . ' WHERE ' . sql_quote_ident($nhodsFkToNh) . ' = :id';
+            $selectStmt = $pdo->prepare($selectSql);
+            $selectStmt->bindValue(':id', $id, PDO::PARAM_INT);
+            $selectStmt->execute();
+            $rawIds = $selectStmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            foreach ($rawIds as $rawId) {
+                $value = is_int($rawId) ? $rawId : (int)$rawId;
+                if ($value > 0) {
+                    $shadeIds[] = $value;
+                }
+            }
+        }
+
+        $shadeRelatedTables = [
+            'balp_nhods_ceny' => ['idnhods', 'id_nhods', 'idnhod'],
+            'balp_nhods_rec' => ['idnhods', 'id_nhods', 'idnhod'],
+            'balp_nhods_vyr' => ['idnhods', 'id_nhods', 'idnhod'],
+            'balp_nhods_vyr_rec' => ['idnhods', 'id_nhods', 'idnhod'],
+            'balp_nhods_vyr_zk' => ['idnhods', 'id_nhods', 'idnhod'],
+        ];
+
+        foreach ($shadeRelatedTables as $tableName => $candidateColumns) {
+            if (!$shadeIds) {
+                break;
+            }
+            if (!$tableExists($pdo, $tableName)) {
+                continue;
+            }
+            $columns = balp_table_get_columns($pdo, $tableName);
+            if ($columns === []) {
+                continue;
+            }
+            $fkColumn = $resolveColumn($columns, $candidateColumns);
+            if (!$fkColumn) {
+                continue;
+            }
+            $params = [];
+            $types = [];
+            $placeholders = [];
+            $sanitized = preg_replace('/[^A-Za-z0-9_]+/', '_', $tableName);
+            foreach (array_values(array_unique($shadeIds)) as $idx => $shadeId) {
+                $placeholder = ':' . $sanitized . '_shade_' . $idx;
+                $placeholders[] = $placeholder;
+                $params[$placeholder] = $shadeId;
+                $types[$placeholder] = PDO::PARAM_INT;
+            }
+            if (!$placeholders) {
+                continue;
+            }
+            $tables[] = [
+                'name' => $tableName,
+                'columns' => $columns,
+                'condition' => sql_quote_ident($fkColumn) . ' IN (' . implode(', ', $placeholders) . ')',
+                'params' => $params,
+                'types' => $types,
+            ];
+        }
+    }
 
     foreach ($tables as $tableInfo) {
         $tableName = $tableInfo['name'];
         $condition = $tableInfo['condition'];
+        $columns = $tableInfo['columns'] ?? null;
         if (!$tableName || !$condition) {
             continue;
         }
 
         $tableQuoted = sql_quote_ident($tableName);
-        $columns = balp_table_get_columns($pdo, $tableName);
+        if ($columns === null || $columns === []) {
+            $columns = balp_table_get_columns($pdo, $tableName);
+        }
         $hasDtod = isset($columns['dtod']);
         $hasDtdo = isset($columns['dtdo']);
 
@@ -117,8 +205,11 @@ try {
             }
         }
 
-        if (strpos($condition, ':id') !== false) {
-            $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $params = $tableInfo['params'] ?? [];
+        $types = $tableInfo['types'] ?? [];
+        foreach ($params as $param => $value) {
+            $type = $types[$param] ?? (is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+            $stmt->bindValue($param, $value, $type);
         }
 
         $stmt->execute();
