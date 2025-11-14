@@ -58,10 +58,27 @@ if (!function_exists('balp_ral_resolve_column')) {
     {
         $columns = balp_table_get_columns($pdo, balp_ral_table_name());
         foreach ($candidates as $candidate) {
-            if (isset($columns[strtolower($candidate)])) {
-                return $candidate;
+            $key = strtolower($candidate);
+            if (!isset($columns[$key])) {
+                continue;
+            }
+            $field = $columns[$key]['Field'] ?? null;
+            if (is_string($field) && $field !== '') {
+                return $field;
+            }
+            return $candidate;
+        }
+
+        if ($fallback !== null) {
+            $fallbackKey = strtolower($fallback);
+            if (isset($columns[$fallbackKey])) {
+                $field = $columns[$fallbackKey]['Field'] ?? null;
+                if (is_string($field) && $field !== '') {
+                    return $field;
+                }
             }
         }
+
         return $fallback;
     }
 }
